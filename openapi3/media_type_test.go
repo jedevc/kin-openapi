@@ -59,16 +59,16 @@ func mediaType() *MediaType {
 				Description: "Some schema",
 			},
 		},
-		Encoding: map[string]*Encoding{
+		Encoding: EncodingsFromMap(map[string]*Encoding{
 			"someEncoding": {
 				ContentType: "application/xml; charset=utf-8",
 			},
-		},
-		Examples: map[string]*ExampleRef{
+		}),
+		Examples: ExamplesFromMap(map[string]*ExampleRef{
 			"someExample": {
 				Value: NewExample(example),
 			},
-		},
+		}),
 	}
 }
 

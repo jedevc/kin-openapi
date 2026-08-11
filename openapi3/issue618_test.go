@@ -35,7 +35,10 @@ paths:
 
 	doc.InternalizeRefs(ctx, nil)
 
-	require.Contains(t, doc.Components.Schemas, "testdata_schema618_JournalEntry")
-	require.Contains(t, doc.Components.Schemas, "testdata_schema618_Record")
-	require.Contains(t, doc.Components.Schemas, "testdata_schema618_Account")
+	_, ok1 := doc.Components.Schemas.Get("testdata_schema618_JournalEntry")
+	require.True(t, ok1, "expected schema testdata_schema618_JournalEntry to exist")
+	_, ok2 := doc.Components.Schemas.Get("testdata_schema618_Record")
+	require.True(t, ok2, "expected schema testdata_schema618_Record to exist")
+	_, ok3 := doc.Components.Schemas.Get("testdata_schema618_Account")
+	require.True(t, ok3, "expected schema testdata_schema618_Account to exist")
 }

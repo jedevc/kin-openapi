@@ -87,7 +87,7 @@ func TestArrayItemsNil_OpenAPI31Accepts(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, doc.Validate(loader.Context))
 	schema := doc.Paths.Value("/f").Post.RequestBody.Value.Content.
-		Get("application/x-www-form-urlencoded").Schema.Value.Properties["tags"].Value
+		Get("application/x-www-form-urlencoded").Schema.Value.Properties.Value("tags").Value
 	require.True(t, schema.Type.Is("array"))
 	require.Nil(t, schema.Items)
 }

@@ -53,23 +53,23 @@ func TestIssue1091_PropertyExtensions(t *testing.T) {
 	require.NotNil(t, v3SchemaRef.Value.Properties)
 
 	// Verify that extensions are preserved on properties
-	field1 := v3SchemaRef.Value.Properties["field1"]
+	field1 := v3SchemaRef.Value.Properties.Value("field1")
 	require.NotNil(t, field1.Value)
 	require.NotNil(t, field1.Value.Extensions)
 	require.Equal(t, float64(1), field1.Value.Extensions["x-order"])
 
-	field2 := v3SchemaRef.Value.Properties["field2"]
+	field2 := v3SchemaRef.Value.Properties.Value("field2")
 	require.NotNil(t, field2.Value)
 	require.NotNil(t, field2.Value.Extensions)
 	require.Equal(t, float64(2), field2.Value.Extensions["x-order"])
 
 	// Verify nested properties also preserve extensions
-	field3 := v3SchemaRef.Value.Properties["field3"]
+	field3 := v3SchemaRef.Value.Properties.Value("field3")
 	require.NotNil(t, field3.Value)
 	require.NotNil(t, field3.Value.Extensions)
 	require.Equal(t, float64(3), field3.Value.Extensions["x-order"])
 
-	nestedField := field3.Value.Properties["nestedField"]
+	nestedField := field3.Value.Properties.Value("nestedField")
 	require.NotNil(t, nestedField.Value)
 	require.NotNil(t, nestedField.Value.Extensions)
 	require.Equal(t, float64(10), nestedField.Value.Extensions["x-order"])
@@ -173,25 +173,25 @@ func TestIssue1091_CompleteV2ToV3Conversion(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify that User schema has extensions preserved
-	userSchema := v3Doc.Components.Schemas["User"]
+	userSchema := v3Doc.Components.Schemas.Value("User")
 	require.NotNil(t, userSchema)
 	require.NotNil(t, userSchema.Value)
 	require.NotNil(t, userSchema.Value.Extensions)
 	require.Equal(t, "entity", userSchema.Value.Extensions["x-model-type"])
 
 	// Verify that property-level extensions are preserved
-	idProp := userSchema.Value.Properties["id"]
+	idProp := userSchema.Value.Properties.Value("id")
 	require.NotNil(t, idProp.Value)
 	require.NotNil(t, idProp.Value.Extensions)
 	require.Equal(t, float64(1), idProp.Value.Extensions["x-order"])
 	require.Equal(t, true, idProp.Value.Extensions["x-primary-key"])
 
-	nameProp := userSchema.Value.Properties["name"]
+	nameProp := userSchema.Value.Properties.Value("name")
 	require.NotNil(t, nameProp.Value)
 	require.NotNil(t, nameProp.Value.Extensions)
 	require.Equal(t, float64(2), nameProp.Value.Extensions["x-order"])
 
-	emailProp := userSchema.Value.Properties["email"]
+	emailProp := userSchema.Value.Properties.Value("email")
 	require.NotNil(t, emailProp.Value)
 	require.NotNil(t, emailProp.Value.Extensions)
 	require.Equal(t, float64(3), emailProp.Value.Extensions["x-order"])

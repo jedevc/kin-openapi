@@ -268,7 +268,7 @@ func TestConvOpenAPIV2ToV3WithAllOfInsideAdditionalProperties(t *testing.T) {
 
 	responseSchema := doc3.Paths.Value("/v1/objStatus").Get.Responses.Value("200").Value.Content.Get("application/json").Schema.Value
 	require.Equal(t, &openapi3.Types{"object"}, responseSchema.Type)
-	resultSchema := responseSchema.Properties["result"].Value
+	resultSchema := responseSchema.Properties.Value("result").Value
 	require.Equal(t, &openapi3.Types{"object"}, resultSchema.Type)
 	require.Equal(t, "#/components/schemas/ObjectInfo", resultSchema.AdditionalProperties.Schema.Value.AllOf[0].Ref)
 	require.Equal(t, "#/components/schemas/ObjectInfo", resultSchema.AdditionalProperties.Schema.Value.AdditionalProperties.Schema.Value.AllOf[0].Ref)

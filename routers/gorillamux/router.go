@@ -135,10 +135,10 @@ func makeServers(in openapi3.Servers) ([]srv, error) {
 		serverURL := server.URL
 		if submatch := singleVariableMatcher.FindStringSubmatch(serverURL); submatch != nil {
 			sVar := submatch[1]
-			sVal := server.Variables[sVar].Default
+			sVal := server.Variables.Value(sVar).Default
 			serverURL = strings.ReplaceAll(serverURL, "{"+sVar+"}", sVal)
 			var varsUpdater varsf
-			if lhs := strings.TrimSuffix(serverURL, server.Variables[sVar].Default); lhs != "" {
+			if lhs := strings.TrimSuffix(serverURL, server.Variables.Value(sVar).Default); lhs != "" {
 				varsUpdater = func(vars map[string]string) { vars[sVar] = lhs }
 			}
 			svr, err := newSrv(serverURL, server, varsUpdater)
@@ -160,7 +160,7 @@ func makeServers(in openapi3.Servers) ([]srv, error) {
 			rest := serverURL[lhs+len(":{"):]
 			rhs := strings.Index(rest, "}")
 			portVariable := rest[:rhs]
-			portValue := server.Variables[portVariable].Default
+			portValue := server.Variables.Value(portVariable).Default
 			serverURL = strings.ReplaceAll(serverURL, "{"+portVariable+"}", portValue)
 			varsUpdater = func(vars map[string]string) {
 				vars[portVariable] = portValue
@@ -227,7 +227,7 @@ func permutePart(part0 string, srv *openapi3.Server) []string {
 	}
 	var2val := make(map[string]mapAndSlice)
 	max := 0
-	for name0, v := range srv.Variables {
+	for name0, v := range srv.Variables.Iter() {
 		name := "{" + name0 + "}"
 		if !strings.Contains(part0, name) {
 			continue

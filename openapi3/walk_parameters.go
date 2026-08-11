@@ -1,8 +1,6 @@
 package openapi3
 
 import (
-	"maps"
-	"slices"
 	"strconv"
 )
 
@@ -47,13 +45,13 @@ type parameterWalker struct {
 
 func (w *parameterWalker) document(doc *T) error {
 	if c := doc.Components; c != nil {
-		for _, name := range slices.Sorted(maps.Keys(c.Parameters)) {
-			if err := w.parameter("/components/parameters/"+escapeRefString(name), c.Parameters[name]); err != nil {
+		for _, name := range sortedKeys(c.Parameters.Keys()) {
+			if err := w.parameter("/components/parameters/"+escapeRefString(name), c.Parameters.Value(name)); err != nil {
 				return err
 			}
 		}
-		for _, name := range slices.Sorted(maps.Keys(c.Callbacks)) {
-			if cbr := c.Callbacks[name]; cbr != nil && cbr.Value != nil {
+		for _, name := range sortedKeys(c.Callbacks.Keys()) {
+			if cbr := c.Callbacks.Value(name); cbr != nil && cbr.Value != nil {
 				if err := w.callback("/components/callbacks/"+escapeRefString(name), cbr.Value); err != nil {
 					return err
 				}
@@ -61,15 +59,14 @@ func (w *parameterWalker) document(doc *T) error {
 		}
 	}
 	if doc.Paths != nil {
-		items := doc.Paths.Map()
-		for _, path := range slices.Sorted(maps.Keys(items)) {
-			if err := w.pathItem("/paths/"+escapeRefString(path), items[path]); err != nil {
+		for _, path := range sortedKeys(doc.Paths.Keys()) {
+			if err := w.pathItem("/paths/"+escapeRefString(path), doc.Paths.Value(path)); err != nil {
 				return err
 			}
 		}
 	}
-	for _, name := range slices.Sorted(maps.Keys(doc.Webhooks)) {
-		if err := w.pathItem("/webhooks/"+escapeRefString(name), doc.Webhooks[name]); err != nil {
+	for _, name := range sortedKeys(doc.Webhooks.Keys()) {
+		if err := w.pathItem("/webhooks/"+escapeRefString(name), doc.Webhooks.Value(name)); err != nil {
 			return err
 		}
 	}
@@ -93,8 +90,8 @@ func (w *parameterWalker) pathItem(ptr string, item *PathItem) error {
 				return err
 			}
 		}
-		for _, name := range slices.Sorted(maps.Keys(op.Callbacks)) {
-			if cbr := op.Callbacks[name]; cbr != nil && cbr.Value != nil {
+		for _, name := range sortedKeys(op.Callbacks.Keys()) {
+			if cbr := op.Callbacks.Value(name); cbr != nil && cbr.Value != nil {
 				if err := w.callback(opPtr+"/callbacks/"+escapeRefString(name), cbr.Value); err != nil {
 					return err
 				}
@@ -105,9 +102,8 @@ func (w *parameterWalker) pathItem(ptr string, item *PathItem) error {
 }
 
 func (w *parameterWalker) callback(ptr string, cb *Callback) error {
-	items := cb.Map()
-	for _, expr := range slices.Sorted(maps.Keys(items)) {
-		if err := w.pathItem(ptr+"/"+escapeRefString(expr), items[expr]); err != nil {
+	for _, expr := range sortedKeys(cb.Keys()) {
+		if err := w.pathItem(ptr+"/"+escapeRefString(expr), cb.Value(expr)); err != nil {
 			return err
 		}
 	}

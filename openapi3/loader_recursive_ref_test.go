@@ -18,7 +18,7 @@ func TestLoaderSupportsRecursiveReference(t *testing.T) {
 		Paths.Value("/foo").
 		Get.Responses.Status(200).Value.
 		Content.Get("application/json").
-		Schema.Value.Properties["foo2"].Value.Properties["foo"].Value.Properties["bar"].Value.Example)
+		Schema.Value.Properties.Value("foo2").Value.Properties.Value("foo").Value.Properties.Value("bar").Value.Example)
 
 	require.Equal(t, "ErrorDetails", doc.
 		Paths.Value("/foo").
@@ -53,9 +53,9 @@ components:
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
 	require.Equal(t, &Types{"object"}, doc.Components.
-		Schemas["Complex"].
-		Value.Properties["parent"].
-		Value.Properties["parent"].
-		Value.Properties["parent"].
+		Schemas.Value("Complex").
+		Value.Properties.Value("parent").
+		Value.Properties.Value("parent").
+		Value.Properties.Value("parent").
 		Value.Type)
 }

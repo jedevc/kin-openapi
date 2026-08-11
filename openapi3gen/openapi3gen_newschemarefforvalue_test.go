@@ -33,7 +33,7 @@ func ExampleNewSchemaRefForValue_withSubPackages() {
 		return t.Name()
 	}
 
-	schemas := make(openapi3.Schemas)
+	schemas := openapi3.NewSchemas()
 	schemaRef, err := openapi3gen.NewSchemaRefForValue(
 		&Parent{},
 		schemas,
@@ -109,7 +109,7 @@ func ExampleNewSchemaRefForValue_withExportingSchemas() {
 		return packages[len(packages)-1] + "_" + t.Name()
 	}
 
-	schemas := make(openapi3.Schemas)
+	schemas := openapi3.NewSchemas()
 	schemaRef, err := openapi3gen.NewSchemaRefForValue(
 		&RecursiveType{},
 		schemas,
@@ -203,7 +203,7 @@ func ExampleNewSchemaRefForValue_withExportingSchemasIgnoreTopLevelParent() {
 		AnotherStruct AnotherStruct `json:"children,omitempty"`
 	}
 
-	schemas := make(openapi3.Schemas)
+	schemas := openapi3.NewSchemas()
 	schemaRef, err := openapi3gen.NewSchemaRefForValue(&RecursiveType{}, schemas, openapi3gen.CreateComponentSchemas(openapi3gen.ExportComponentSchemasOptions{
 		ExportComponentSchemas: true, ExportTopLevelSchema: false,
 	}))
@@ -278,7 +278,7 @@ func ExampleNewSchemaRefForValue_withExportingSchemasWithGeneric() {
 		GenericStruct GenericStruct[string] `json:"genericChild"`
 	}
 
-	schemas := make(openapi3.Schemas)
+	schemas := openapi3.NewSchemas()
 	schemaRef, err := openapi3gen.NewSchemaRefForValue(
 		&RecursiveType{},
 		schemas,
@@ -372,7 +372,7 @@ func ExampleNewSchemaRefForValue_withExportingSchemasWithMap() {
 		Map2   map[string]Child `json:"anymapChild"`
 	}
 
-	schemas := make(openapi3.Schemas)
+	schemas := openapi3.NewSchemas()
 	schemaRef, err := openapi3gen.NewSchemaRefForValue(
 		&MyType{},
 		schemas,

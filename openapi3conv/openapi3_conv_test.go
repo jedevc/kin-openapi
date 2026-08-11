@@ -84,7 +84,7 @@ components:
 `)
 	upgradeAndAssertValid(t, doc)
 	assert.Equal(t, "3.2.0", doc.OpenAPI)
-	assert.Equal(t, openapi3.Types{"string", "null"}, *doc.Components.Schemas["Pet"].Value.Type)
+	assert.Equal(t, openapi3.Types{"string", "null"}, *doc.Components.Schemas.Value("Pet").Value.Type)
 }
 
 // ---------------------------------------------------------------------------
@@ -103,7 +103,7 @@ components:
       nullable: true
 `)
 	upgradeAndAssertValid(t, doc)
-	pet := doc.Components.Schemas["Pet"].Value
+	pet := doc.Components.Schemas.Value("Pet").Value
 	require.NotNil(t, pet.Type)
 	assert.Equal(t, openapi3.Types{"string", "null"}, *pet.Type)
 	assert.False(t, pet.Nullable, "nullable should be cleared after rewrite")
@@ -124,7 +124,7 @@ components:
       nullable: true
 `)
 	openapi3conv.Upgrade(doc)
-	pet := doc.Components.Schemas["Pet"].Value
+	pet := doc.Components.Schemas.Value("Pet").Value
 	assert.Equal(t, openapi3.Types{"string", "null"}, *pet.Type, "no duplicate null appended")
 	assert.False(t, pet.Nullable)
 }
@@ -143,7 +143,7 @@ components:
       nullable: true
 `)
 	upgradeAndAssertValid(t, doc)
-	pet := doc.Components.Schemas["Pet"].Value
+	pet := doc.Components.Schemas.Value("Pet").Value
 	assert.False(t, pet.Nullable)
 	assert.Nil(t, pet.Type)
 }
@@ -166,9 +166,9 @@ components:
           nullable: true
 `)
 	upgradeAndAssertValid(t, doc)
-	props := doc.Components.Schemas["Pet"].Value.Properties
-	assert.Equal(t, openapi3.Types{"string", "null"}, *props["name"].Value.Type)
-	assert.Equal(t, openapi3.Types{"integer", "null"}, *props["ageInYears"].Value.Type)
+	props := doc.Components.Schemas.Value("Pet").Value.Properties
+	assert.Equal(t, openapi3.Types{"string", "null"}, *props.Value("name").Value.Type)
+	assert.Equal(t, openapi3.Types{"integer", "null"}, *props.Value("ageInYears").Value.Type)
 }
 
 // ---------------------------------------------------------------------------
@@ -188,7 +188,7 @@ components:
       exclusiveMinimum: true
 `)
 	upgradeAndAssertValid(t, doc)
-	score := doc.Components.Schemas["Score"].Value
+	score := doc.Components.Schemas.Value("Score").Value
 	assert.Nil(t, score.Min, "Min cleared")
 	require.NotNil(t, score.ExclusiveMin.Value)
 	assert.Equal(t, 5.0, *score.ExclusiveMin.Value)
@@ -208,7 +208,7 @@ components:
       exclusiveMaximum: true
 `)
 	upgradeAndAssertValid(t, doc)
-	score := doc.Components.Schemas["Score"].Value
+	score := doc.Components.Schemas.Value("Score").Value
 	assert.Nil(t, score.Max)
 	require.NotNil(t, score.ExclusiveMax.Value)
 	assert.Equal(t, 100.0, *score.ExclusiveMax.Value)
@@ -230,7 +230,7 @@ components:
       exclusiveMinimum: false
 `)
 	upgradeAndAssertValid(t, doc)
-	score := doc.Components.Schemas["Score"].Value
+	score := doc.Components.Schemas.Value("Score").Value
 	require.NotNil(t, score.Min)
 	assert.Equal(t, 5.0, *score.Min)
 	assert.False(t, score.ExclusiveMin.IsSet(), "exclusiveMinimum: false should be dropped")
@@ -253,7 +253,7 @@ components:
 	require.NoError(t, err)
 
 	upgradeAndAssertValid(t, doc)
-	score := doc.Components.Schemas["Score"].Value
+	score := doc.Components.Schemas.Value("Score").Value
 	require.NotNil(t, score.ExclusiveMin.Value)
 	assert.Equal(t, 5.0, *score.ExclusiveMin.Value)
 	assert.Nil(t, score.Min)
@@ -275,7 +275,7 @@ components:
       example: fido
 `)
 	upgradeAndAssertValid(t, doc)
-	pet := doc.Components.Schemas["Pet"].Value
+	pet := doc.Components.Schemas.Value("Pet").Value
 	assert.Nil(t, pet.Example)
 	require.Len(t, pet.Examples, 1)
 	assert.Equal(t, "fido", pet.Examples[0])
@@ -299,7 +299,7 @@ components:
 `))
 	require.NoError(t, err)
 	openapi3conv.Upgrade(doc)
-	pet := doc.Components.Schemas["Pet"].Value
+	pet := doc.Components.Schemas.Value("Pet").Value
 	assert.Nil(t, pet.Example)
 	assert.Equal(t, []any{"rex", "fido"}, pet.Examples)
 }
@@ -372,8 +372,8 @@ paths:
 	param := getOp.Parameters[0].Value.Schema.Value
 	assert.Equal(t, openapi3.Types{"string", "null"}, *param.Type)
 
-	body := getOp.Responses.Value("200").Value.Content["application/json"].Schema.Value
-	total := body.Properties["total"].Value
+	body := getOp.Responses.Value("200").Value.Content.Value("application/json").Schema.Value
+	total := body.Properties.Value("total").Value
 	assert.Nil(t, total.Min)
 	require.NotNil(t, total.ExclusiveMin.Value)
 	assert.Equal(t, 0.0, *total.ExclusiveMin.Value)
@@ -388,19 +388,19 @@ func TestUpgrade_CycleSafe(t *testing.T) {
 	// $ref into shared *Schema pointers, so a self-referential schema
 	// becomes a true graph cycle. The walker must terminate.
 	cycle := &openapi3.Schema{Type: &openapi3.Types{"object"}}
-	cycle.Properties = openapi3.Schemas{
-		"self": &openapi3.SchemaRef{Value: cycle},
-		"name": &openapi3.SchemaRef{Value: &openapi3.Schema{
+	cycle.Properties = openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+		"self": {Value: cycle},
+		"name": {Value: &openapi3.Schema{
 			Type:     &openapi3.Types{"string"},
 			Nullable: true,
 		}},
-	}
+	})
 	doc := &openapi3.T{
 		OpenAPI: "3.0.3",
 		Info:    &openapi3.Info{Title: "t", Version: "1"},
 		Paths:   openapi3.NewPaths(),
 		Components: &openapi3.Components{
-			Schemas: openapi3.Schemas{"Cycle": &openapi3.SchemaRef{Value: cycle}},
+			Schemas: openapi3.Ptr(openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{"Cycle": {Value: cycle}})),
 		},
 	}
 
@@ -413,7 +413,7 @@ func TestUpgrade_CycleSafe(t *testing.T) {
 	}
 
 	// Sanity: the rewrite still ran on the non-cyclic property.
-	name := cycle.Properties["name"].Value
+	name := cycle.Properties.Value("name").Value
 	assert.Equal(t, openapi3.Types{"string", "null"}, *name.Type)
 }
 
@@ -460,15 +460,15 @@ func TestUpgradeSchema_NilSchema(t *testing.T) {
 func TestUpgradeSchema_OperatesOnSubtree(t *testing.T) {
 	s := &openapi3.Schema{
 		Type: &openapi3.Types{"object"},
-		Properties: openapi3.Schemas{
-			"x": &openapi3.SchemaRef{Value: &openapi3.Schema{
+		Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+			"x": {Value: &openapi3.Schema{
 				Type:     &openapi3.Types{"string"},
 				Nullable: true,
 			}},
-		},
+		}),
 	}
 	openapi3conv.UpgradeSchema(s)
-	x := s.Properties["x"].Value
+	x := s.Properties.Value("x").Value
 	assert.Equal(t, openapi3.Types{"string", "null"}, *x.Type)
 	assert.False(t, x.Nullable)
 }

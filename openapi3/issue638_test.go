@@ -18,6 +18,6 @@ func TestIssue638(t *testing.T) {
 		// testdata/issue638/test1.yaml             : reproduce
 		doc, err := loader.LoadFromFile("testdata/issue638/test1.yaml")
 		require.NoError(t, err)
-		require.Equal(t, &openapi3.Types{"int"}, doc.Components.Schemas["test1d"].Value.Type)
+		require.Equal(t, &openapi3.Types{"int"}, doc.Components.Schemas.Value("test1d").Value.Type)
 	}
 }

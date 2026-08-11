@@ -14,8 +14,8 @@ func Example_jsonSchema2020Validator() {
 	// Create a schema using OpenAPI 3.1 features
 	schema := &openapi3.Schema{
 		Type: &openapi3.Types{"object"},
-		Properties: openapi3.Schemas{
-			"name": &openapi3.SchemaRef{
+		Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+			"name": {
 				Value: &openapi3.Schema{
 					Type: &openapi3.Types{"string"},
 					Examples: []any{
@@ -24,19 +24,19 @@ func Example_jsonSchema2020Validator() {
 					},
 				},
 			},
-			"age": &openapi3.SchemaRef{
+			"age": {
 				Value: &openapi3.Schema{
 					// Type array with null - OpenAPI 3.1 feature
 					Type: &openapi3.Types{"integer", "null"},
 				},
 			},
-			"status": &openapi3.SchemaRef{
+			"status": {
 				Value: &openapi3.Schema{
 					// Const keyword - OpenAPI 3.1 feature
 					Const: "active",
 				},
 			},
-		},
+		}),
 		Required: []string{"name", "status"},
 	}
 
@@ -182,34 +182,34 @@ func Example_complexNestedSchema() {
 
 	schema := &openapi3.Schema{
 		Type: &openapi3.Types{"object"},
-		Properties: openapi3.Schemas{
-			"user": &openapi3.SchemaRef{
+		Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+			"user": {
 				Value: &openapi3.Schema{
 					Type: &openapi3.Types{"object"},
-					Properties: openapi3.Schemas{
-						"name": &openapi3.SchemaRef{
+					Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+						"name": {
 							Value: &openapi3.Schema{
 								Type: &openapi3.Types{"string"},
 							},
 						},
-						"email": &openapi3.SchemaRef{
+						"email": {
 							Value: &openapi3.Schema{
 								Type:   &openapi3.Types{"string"},
 								Format: "email",
 							},
 						},
-					},
+					}),
 					Required: []string{"name", "email"},
 				},
 			},
-			"score": &openapi3.SchemaRef{
+			"score": {
 				Value: &openapi3.Schema{
 					Type: &openapi3.Types{"number"},
 					Min:  &min,
 					Max:  &max,
 				},
 			},
-		},
+		}),
 		Required: []string{"user", "score"},
 	}
 

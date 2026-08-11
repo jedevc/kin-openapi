@@ -65,9 +65,9 @@ func TestWalkSchemasVisitsMediaTypeItemSchema(t *testing.T) {
 				Responses: openapi3.NewResponses(openapi3.WithStatus(200, &openapi3.ResponseRef{
 					Value: &openapi3.Response{
 						Description: openapi3.Ptr("event stream"),
-						Content: openapi3.Content{
+						Content: openapi3.ContentFromMap(map[string]*openapi3.MediaType{
 							"text/event-stream": {ItemSchema: itemSchema},
-						},
+						}),
 					},
 				})),
 			},

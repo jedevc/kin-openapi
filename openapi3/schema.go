@@ -588,7 +588,7 @@ func (schema Schema) MarshalYAML() (any, error) {
 	if x := schema.Required; len(x) != 0 {
 		m["required"] = x
 	}
-	if x := schema.Properties; len(x) != 0 {
+	if x := schema.Properties; x.Len() != 0 {
 		m["properties"] = x
 	}
 	if x := schema.MinProps; x != 0 {
@@ -623,10 +623,10 @@ func (schema Schema) MarshalYAML() (any, error) {
 	if x := schema.MaxContains; x != nil {
 		m["maxContains"] = x
 	}
-	if x := schema.PatternProperties; len(x) != 0 {
+	if x := schema.PatternProperties; x.Len() != 0 {
 		m["patternProperties"] = x
 	}
-	if x := schema.DependentSchemas; len(x) != 0 {
+	if x := schema.DependentSchemas; x.Len() != 0 {
 		m["dependentSchemas"] = x
 	}
 	if x := schema.PropertyNames; x != nil {
@@ -650,7 +650,7 @@ func (schema Schema) MarshalYAML() (any, error) {
 	if x := schema.DependentRequired; len(x) != 0 {
 		m["dependentRequired"] = x
 	}
-	if x := schema.Defs; len(x) != 0 {
+	if x := schema.Defs; x.Len() != 0 {
 		m["$defs"] = x
 	}
 	if x := schema.SchemaDialect; x != "" {
@@ -863,7 +863,7 @@ func (schema Schema) JSONLookup(token string) (any, error) {
 	case "required":
 		return schema.Required, nil
 	case "properties":
-		return schema.Properties, nil
+		return &schema.Properties, nil
 	case "minProps":
 		return schema.MinProps, nil
 	case "maxProps":
@@ -890,9 +890,9 @@ func (schema Schema) JSONLookup(token string) (any, error) {
 	case "maxContains":
 		return schema.MaxContains, nil
 	case "patternProperties":
-		return schema.PatternProperties, nil
+		return &schema.PatternProperties, nil
 	case "dependentSchemas":
-		return schema.DependentSchemas, nil
+		return &schema.DependentSchemas, nil
 	case "propertyNames":
 		if schema.PropertyNames != nil {
 			if schema.PropertyNames.Ref != "" {
@@ -944,7 +944,7 @@ func (schema Schema) JSONLookup(token string) (any, error) {
 	case "dependentRequired":
 		return schema.DependentRequired, nil
 	case "$defs":
-		return schema.Defs, nil
+		return &schema.Defs, nil
 	case "$schema":
 		return schema.SchemaDialect, nil
 	case "$comment":
@@ -1078,7 +1078,7 @@ func NewArraySchema() *Schema {
 func NewObjectSchema() *Schema {
 	return &Schema{
 		Type:       &Types{TypeObject},
-		Properties: make(Schemas),
+		Properties: *NewSchemas(),
 	}
 }
 
@@ -1211,21 +1211,18 @@ func (schema *Schema) WithProperty(name string, propertySchema *Schema) *Schema 
 }
 
 func (schema *Schema) WithPropertyRef(name string, ref *SchemaRef) *Schema {
-	if schema.Properties == nil {
-		schema.Properties = make(Schemas)
-	}
-	schema.Properties[name] = ref
+	schema.Properties.Set(name, ref)
 	return schema
 }
 
 func (schema *Schema) WithProperties(properties map[string]*Schema) *Schema {
-	result := make(Schemas, len(properties))
+	result := NewSchemasWithCapacity(len(properties))
 	for k, v := range properties {
-		result[k] = &SchemaRef{
+		result.Set(k, &SchemaRef{
 			Value: v,
-		}
+		})
 	}
-	schema.Properties = result
+	schema.Properties = *result
 	return schema
 }
 
@@ -1304,17 +1301,17 @@ func (schema *Schema) IsEmpty() bool {
 	if schema.MinContains != nil || schema.MaxContains != nil {
 		return false
 	}
-	for _, s := range schema.Properties {
+	for _, s := range schema.Properties.Iter() {
 		if ss := s.Value; ss != nil && !ss.IsEmpty() {
 			return false
 		}
 	}
-	for _, s := range schema.PatternProperties {
+	for _, s := range schema.PatternProperties.Iter() {
 		if ss := s.Value; ss != nil && !ss.IsEmpty() {
 			return false
 		}
 	}
-	for _, s := range schema.DependentSchemas {
+	for _, s := range schema.DependentSchemas.Iter() {
 		if ss := s.Value; ss != nil && !ss.IsEmpty() {
 			return false
 		}
@@ -1364,7 +1361,7 @@ func (schema *Schema) IsEmpty() bool {
 	if len(schema.DependentRequired) != 0 {
 		return false
 	}
-	if len(schema.Defs) != 0 {
+	if schema.Defs.Len() != 0 {
 		return false
 	}
 	if schema.SchemaDialect != "" || schema.Comment != "" {
@@ -1461,12 +1458,12 @@ func (schema *Schema) validate(ctx context.Context, stack []*Schema) ([]*Schema,
 				return stack, err
 			}
 		}
-		if len(schema.PatternProperties) != 0 {
+		if schema.PatternProperties.Len() != 0 {
 			if err := reject("patternProperties"); err != nil {
 				return stack, err
 			}
 		}
-		if len(schema.DependentSchemas) != 0 {
+		if schema.DependentSchemas.Len() != 0 {
 			if err := reject("dependentSchemas"); err != nil {
 				return stack, err
 			}
@@ -1506,7 +1503,7 @@ func (schema *Schema) validate(ctx context.Context, stack []*Schema) ([]*Schema,
 				return stack, err
 			}
 		}
-		if len(schema.Defs) != 0 {
+		if schema.Defs.Len() != 0 {
 			if err := reject("$defs"); err != nil {
 				return stack, err
 			}
@@ -1715,8 +1712,7 @@ func (schema *Schema) validate(ctx context.Context, stack []*Schema) ([]*Schema,
 		}
 	}
 
-	for _, name := range componentNames(schema.Properties) {
-		ref := schema.Properties[name]
+	for _, ref := range schema.Properties.Iter() {
 		if err := ref.validateExtras(ctx); err != nil {
 			return stack, err
 		}
@@ -1778,8 +1774,7 @@ func (schema *Schema) validate(ctx context.Context, stack []*Schema) ([]*Schema,
 			return stack, err
 		}
 	}
-	for _, name := range componentNames(schema.PatternProperties) {
-		ref := schema.PatternProperties[name]
+	for _, ref := range schema.PatternProperties.Iter() {
 		if err := ref.validateExtras(ctx); err != nil {
 			return stack, err
 		}
@@ -1793,8 +1788,7 @@ func (schema *Schema) validate(ctx context.Context, stack []*Schema) ([]*Schema,
 			return stack, err
 		}
 	}
-	for _, name := range componentNames(schema.DependentSchemas) {
-		ref := schema.DependentSchemas[name]
+	for _, ref := range schema.DependentSchemas.Iter() {
 		if err := ref.validateExtras(ctx); err != nil {
 			return stack, err
 		}
@@ -1808,8 +1802,7 @@ func (schema *Schema) validate(ctx context.Context, stack []*Schema) ([]*Schema,
 			return stack, err
 		}
 	}
-	for _, name := range componentNames(schema.Defs) {
-		ref := schema.Defs[name]
+	for _, ref := range schema.Defs.Iter() {
 		if err := ref.validateExtras(ctx); err != nil {
 			return stack, err
 		}
@@ -2908,8 +2901,7 @@ func (schema *Schema) visitJSONObject(settings *schemaValidationSettings, value 
 	var me MultiError
 
 	if settings.asreq || settings.asrep {
-		for _, propName := range componentNames(schema.Properties) {
-			propSchema := schema.Properties[propName]
+		for propName, propSchema := range schema.Properties.Iter() {
 			reqRO := settings.asreq && propSchema.Value.ReadOnly && !settings.readOnlyValidationDisabled
 			repWO := settings.asrep && propSchema.Value.WriteOnly && !settings.writeOnlyValidationDisabled
 
@@ -2977,8 +2969,8 @@ func (schema *Schema) visitJSONObject(settings *schemaValidationSettings, value 
 	}
 	for _, k := range componentNames(value) {
 		v := value[k]
-		if properties != nil {
-			propertyRef := properties[k]
+		if properties.Len() != 0 {
+			propertyRef, _ := properties.Get(k)
 			if propertyRef != nil {
 				p := propertyRef.Value
 				if p == nil {
@@ -3039,10 +3031,10 @@ func (schema *Schema) visitJSONObject(settings *schemaValidationSettings, value 
 	// "required"
 	for _, k := range schema.Required {
 		if _, ok := value[k]; !ok {
-			if s := schema.Properties[k]; s != nil && s.Value.ReadOnly && settings.asreq {
+			if s := schema.Properties.Value(k); s != nil && s.Value.ReadOnly && settings.asreq {
 				continue
 			}
-			if s := schema.Properties[k]; s != nil && s.Value.WriteOnly && settings.asrep {
+			if s := schema.Properties.Value(k); s != nil && s.Value.WriteOnly && settings.asrep {
 				continue
 			}
 			if settings.failfast {

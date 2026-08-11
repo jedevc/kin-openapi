@@ -19,16 +19,16 @@ func TestIssue753(t *testing.T) {
 
 	require.NotNil(t, doc.
 		Paths.Value("/test1").
-		Post.Callbacks["callback1"].Value.
+		Post.Callbacks.Value("callback1").Value.
 		Value("{$request.body#/callback}").
 		Post.RequestBody.Value.
-		Content["application/json"].
+		Content.Value("application/json").
 		Schema.Value)
 	require.NotNil(t, doc.
 		Paths.Value("/test2").
-		Post.Callbacks["callback2"].Value.
+		Post.Callbacks.Value("callback2").Value.
 		Value("{$request.body#/callback}").
 		Post.RequestBody.Value.
-		Content["application/json"].
+		Content.Value("application/json").
 		Schema.Value)
 }

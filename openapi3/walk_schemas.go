@@ -2,7 +2,6 @@ package openapi3
 
 import (
 	"errors"
-	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -68,37 +67,42 @@ func escapeRefString(s string) string {
 	return strings.NewReplacer("~", "~0", "/", "~1").Replace(s)
 }
 
+// sortedKeys returns keys in sorted order, for the ordered-map types.
+func sortedKeys(keys []string) []string {
+	return slices.Sorted(slices.Values(keys))
+}
+
 func (w *schemaWalker) document(doc *T) error {
 	if c := doc.Components; c != nil {
-		for _, name := range slices.Sorted(maps.Keys(c.Schemas)) {
-			if err := w.schemaRef("/components/schemas/"+escapeRefString(name), c.Schemas[name]); err != nil {
+		for _, name := range sortedKeys(c.Schemas.Keys()) {
+			if err := w.schemaRef("/components/schemas/"+escapeRefString(name), c.Schemas.Value(name)); err != nil {
 				return err
 			}
 		}
-		for _, name := range slices.Sorted(maps.Keys(c.Parameters)) {
-			if err := w.parameter("/components/parameters/"+escapeRefString(name), c.Parameters[name]); err != nil {
+		for _, name := range sortedKeys(c.Parameters.Keys()) {
+			if err := w.parameter("/components/parameters/"+escapeRefString(name), c.Parameters.Value(name)); err != nil {
 				return err
 			}
 		}
-		for _, name := range slices.Sorted(maps.Keys(c.Headers)) {
-			if err := w.header("/components/headers/"+escapeRefString(name), c.Headers[name]); err != nil {
+		for _, name := range sortedKeys(c.Headers.Keys()) {
+			if err := w.header("/components/headers/"+escapeRefString(name), c.Headers.Value(name)); err != nil {
 				return err
 			}
 		}
-		for _, name := range slices.Sorted(maps.Keys(c.RequestBodies)) {
-			if rbr := c.RequestBodies[name]; rbr != nil && rbr.Value != nil {
+		for _, name := range sortedKeys(c.RequestBodies.Keys()) {
+			if rbr := c.RequestBodies.Value(name); rbr != nil && rbr.Value != nil {
 				if err := w.content("/components/requestBodies/"+escapeRefString(name)+"/content", rbr.Value.Content); err != nil {
 					return err
 				}
 			}
 		}
-		for _, name := range slices.Sorted(maps.Keys(c.Responses)) {
-			if err := w.response("/components/responses/"+escapeRefString(name), c.Responses[name]); err != nil {
+		for _, name := range sortedKeys(c.Responses.Keys()) {
+			if err := w.response("/components/responses/"+escapeRefString(name), c.Responses.Value(name)); err != nil {
 				return err
 			}
 		}
-		for _, name := range slices.Sorted(maps.Keys(c.Callbacks)) {
-			if cbr := c.Callbacks[name]; cbr != nil && cbr.Value != nil {
+		for _, name := range sortedKeys(c.Callbacks.Keys()) {
+			if cbr := c.Callbacks.Value(name); cbr != nil && cbr.Value != nil {
 				if err := w.callback("/components/callbacks/"+escapeRefString(name), cbr.Value); err != nil {
 					return err
 				}
@@ -106,15 +110,14 @@ func (w *schemaWalker) document(doc *T) error {
 		}
 	}
 	if doc.Paths != nil {
-		items := doc.Paths.Map()
-		for _, path := range slices.Sorted(maps.Keys(items)) {
-			if err := w.pathItem("/paths/"+escapeRefString(path), items[path]); err != nil {
+		for _, path := range sortedKeys(doc.Paths.Keys()) {
+			if err := w.pathItem("/paths/"+escapeRefString(path), doc.Paths.Value(path)); err != nil {
 				return err
 			}
 		}
 	}
-	for _, name := range slices.Sorted(maps.Keys(doc.Webhooks)) {
-		if err := w.pathItem("/webhooks/"+escapeRefString(name), doc.Webhooks[name]); err != nil {
+	for _, name := range sortedKeys(doc.Webhooks.Keys()) {
+		if err := w.pathItem("/webhooks/"+escapeRefString(name), doc.Webhooks.Value(name)); err != nil {
 			return err
 		}
 	}
@@ -153,15 +156,14 @@ func (w *schemaWalker) operation(ptr string, op *Operation) error {
 		}
 	}
 	if op.Responses != nil {
-		responses := op.Responses.Map()
-		for _, code := range slices.Sorted(maps.Keys(responses)) {
-			if err := w.response(ptr+"/responses/"+escapeRefString(code), responses[code]); err != nil {
+		for _, code := range sortedKeys(op.Responses.Keys()) {
+			if err := w.response(ptr+"/responses/"+escapeRefString(code), op.Responses.Value(code)); err != nil {
 				return err
 			}
 		}
 	}
-	for _, name := range slices.Sorted(maps.Keys(op.Callbacks)) {
-		if cbr := op.Callbacks[name]; cbr != nil && cbr.Value != nil {
+	for _, name := range sortedKeys(op.Callbacks.Keys()) {
+		if cbr := op.Callbacks.Value(name); cbr != nil && cbr.Value != nil {
 			if err := w.callback(ptr+"/callbacks/"+escapeRefString(name), cbr.Value); err != nil {
 				return err
 			}
@@ -171,9 +173,8 @@ func (w *schemaWalker) operation(ptr string, op *Operation) error {
 }
 
 func (w *schemaWalker) callback(ptr string, cb *Callback) error {
-	items := cb.Map()
-	for _, expr := range slices.Sorted(maps.Keys(items)) {
-		if err := w.pathItem(ptr+"/"+escapeRefString(expr), items[expr]); err != nil {
+	for _, expr := range sortedKeys(cb.Keys()) {
+		if err := w.pathItem(ptr+"/"+escapeRefString(expr), cb.Value(expr)); err != nil {
 			return err
 		}
 	}
@@ -204,8 +205,8 @@ func (w *schemaWalker) response(ptr string, rr *ResponseRef) error {
 	if rr == nil || rr.Value == nil {
 		return nil
 	}
-	for _, name := range slices.Sorted(maps.Keys(rr.Value.Headers)) {
-		if err := w.header(ptr+"/headers/"+escapeRefString(name), rr.Value.Headers[name]); err != nil {
+	for _, name := range sortedKeys(rr.Value.Headers.Keys()) {
+		if err := w.header(ptr+"/headers/"+escapeRefString(name), rr.Value.Headers.Value(name)); err != nil {
 			return err
 		}
 	}
@@ -213,8 +214,8 @@ func (w *schemaWalker) response(ptr string, rr *ResponseRef) error {
 }
 
 func (w *schemaWalker) content(ptr string, content Content) error {
-	for _, mediaType := range slices.Sorted(maps.Keys(content)) {
-		media := content[mediaType]
+	for _, mediaType := range sortedKeys(content.Keys()) {
+		media := content.Value(mediaType)
 		if media == nil {
 			continue
 		}
@@ -255,8 +256,8 @@ func (w *schemaWalker) schemaRef(ptr string, sr *SchemaRef) error {
 		return err
 	}
 
-	for _, name := range slices.Sorted(maps.Keys(s.Properties)) {
-		if err := w.schemaRef(ptr+"/properties/"+escapeRefString(name), s.Properties[name]); err != nil {
+	for _, name := range sortedKeys(s.Properties.Keys()) {
+		if err := w.schemaRef(ptr+"/properties/"+escapeRefString(name), s.Properties.Value(name)); err != nil {
 			return err
 		}
 	}
@@ -286,13 +287,13 @@ func (w *schemaWalker) schemaRef(ptr string, sr *SchemaRef) error {
 	if err := w.schemaRef(ptr+"/contains", s.Contains); err != nil {
 		return err
 	}
-	for _, name := range slices.Sorted(maps.Keys(s.PatternProperties)) {
-		if err := w.schemaRef(ptr+"/patternProperties/"+escapeRefString(name), s.PatternProperties[name]); err != nil {
+	for _, name := range sortedKeys(s.PatternProperties.Keys()) {
+		if err := w.schemaRef(ptr+"/patternProperties/"+escapeRefString(name), s.PatternProperties.Value(name)); err != nil {
 			return err
 		}
 	}
-	for _, name := range slices.Sorted(maps.Keys(s.DependentSchemas)) {
-		if err := w.schemaRef(ptr+"/dependentSchemas/"+escapeRefString(name), s.DependentSchemas[name]); err != nil {
+	for _, name := range sortedKeys(s.DependentSchemas.Keys()) {
+		if err := w.schemaRef(ptr+"/dependentSchemas/"+escapeRefString(name), s.DependentSchemas.Value(name)); err != nil {
 			return err
 		}
 	}
@@ -308,8 +309,8 @@ func (w *schemaWalker) schemaRef(ptr string, sr *SchemaRef) error {
 	if err := w.schemaRef(ptr+"/else", s.Else); err != nil {
 		return err
 	}
-	for _, name := range slices.Sorted(maps.Keys(s.Defs)) {
-		if err := w.schemaRef(ptr+"/$defs/"+escapeRefString(name), s.Defs[name]); err != nil {
+	for _, name := range sortedKeys(s.Defs.Keys()) {
+		if err := w.schemaRef(ptr+"/$defs/"+escapeRefString(name), s.Defs.Value(name)); err != nil {
 			return err
 		}
 	}

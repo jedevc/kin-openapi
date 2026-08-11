@@ -41,6 +41,8 @@ func (x *CallbackRef) CollectionName() string { return "callbacks" }
 // RefPath returns the path of the $ref relative to the root document.
 func (x *CallbackRef) RefPath() *url.URL { return copyURI(x.refPath) }
 
+func (x *CallbackRef) refValue() any { return x.Value }
+
 func (x *CallbackRef) setRefPath(u *url.URL) {
 	// Once the refPath is set don't override. References can be loaded
 	// multiple times not all with access to the correct path info.
@@ -202,6 +204,8 @@ func (x *ExampleRef) CollectionName() string { return "examples" }
 
 // RefPath returns the path of the $ref relative to the root document.
 func (x *ExampleRef) RefPath() *url.URL { return copyURI(x.refPath) }
+
+func (x *ExampleRef) refValue() any { return x.Value }
 
 func (x *ExampleRef) setRefPath(u *url.URL) {
 	// Once the refPath is set don't override. References can be loaded
@@ -365,6 +369,8 @@ func (x *HeaderRef) CollectionName() string { return "headers" }
 // RefPath returns the path of the $ref relative to the root document.
 func (x *HeaderRef) RefPath() *url.URL { return copyURI(x.refPath) }
 
+func (x *HeaderRef) refValue() any { return x.Value }
+
 func (x *HeaderRef) setRefPath(u *url.URL) {
 	// Once the refPath is set don't override. References can be loaded
 	// multiple times not all with access to the correct path info.
@@ -526,6 +532,8 @@ func (x *LinkRef) CollectionName() string { return "links" }
 
 // RefPath returns the path of the $ref relative to the root document.
 func (x *LinkRef) RefPath() *url.URL { return copyURI(x.refPath) }
+
+func (x *LinkRef) refValue() any { return x.Value }
 
 func (x *LinkRef) setRefPath(u *url.URL) {
 	// Once the refPath is set don't override. References can be loaded
@@ -689,6 +697,8 @@ func (x *ParameterRef) CollectionName() string { return "parameters" }
 // RefPath returns the path of the $ref relative to the root document.
 func (x *ParameterRef) RefPath() *url.URL { return copyURI(x.refPath) }
 
+func (x *ParameterRef) refValue() any { return x.Value }
+
 func (x *ParameterRef) setRefPath(u *url.URL) {
 	// Once the refPath is set don't override. References can be loaded
 	// multiple times not all with access to the correct path info.
@@ -850,6 +860,8 @@ func (x *RequestBodyRef) CollectionName() string { return "requestBodies" }
 
 // RefPath returns the path of the $ref relative to the root document.
 func (x *RequestBodyRef) RefPath() *url.URL { return copyURI(x.refPath) }
+
+func (x *RequestBodyRef) refValue() any { return x.Value }
 
 func (x *RequestBodyRef) setRefPath(u *url.URL) {
 	// Once the refPath is set don't override. References can be loaded
@@ -1013,6 +1025,8 @@ func (x *ResponseRef) CollectionName() string { return "responses" }
 // RefPath returns the path of the $ref relative to the root document.
 func (x *ResponseRef) RefPath() *url.URL { return copyURI(x.refPath) }
 
+func (x *ResponseRef) refValue() any { return x.Value }
+
 func (x *ResponseRef) setRefPath(u *url.URL) {
 	// Once the refPath is set don't override. References can be loaded
 	// multiple times not all with access to the correct path info.
@@ -1174,6 +1188,8 @@ func (x *SchemaRef) CollectionName() string { return "schemas" }
 
 // RefPath returns the path of the $ref relative to the root document.
 func (x *SchemaRef) RefPath() *url.URL { return copyURI(x.refPath) }
+
+func (x *SchemaRef) refValue() any { return x.Value }
 
 func (x *SchemaRef) setRefPath(u *url.URL) {
 	// Once the refPath is set don't override. References can be loaded
@@ -1340,6 +1356,8 @@ func (x *SecuritySchemeRef) CollectionName() string { return "securitySchemes" }
 
 // RefPath returns the path of the $ref relative to the root document.
 func (x *SecuritySchemeRef) RefPath() *url.URL { return copyURI(x.refPath) }
+
+func (x *SecuritySchemeRef) refValue() any { return x.Value }
 
 func (x *SecuritySchemeRef) setRefPath(u *url.URL) {
 	// Once the refPath is set don't override. References can be loaded

@@ -43,7 +43,12 @@ func testSchema(example schemaExample) func(*testing.T) {
 			var dataSchema Schema
 			err = json.Unmarshal(jsonSchema, &dataSchema)
 			require.NoError(t, err)
-			require.Equal(t, dataUnserialized, dataSchema)
+			// Compare via JSON to avoid internal pointer differences in ordered maps
+			jsonDataUnserialized, err := json.Marshal(dataUnserialized)
+			require.NoError(t, err)
+			jsonDataSchema, err := json.Marshal(dataSchema)
+			require.NoError(t, err)
+			require.JSONEq(t, string(jsonDataUnserialized), string(jsonDataSchema))
 		}
 		for validateFuncIndex, validateFunc := range validateSchemaFuncs {
 			for index, value := range example.AllValid {
@@ -584,9 +589,9 @@ var schemaExamples = []schemaExample{
 			UniqueItems: true,
 			Items: (&Schema{
 				Type: &Types{"object"},
-				Properties: Schemas{
+				Properties: SchemasFromMap(map[string]*SchemaRef{
 					"key1": NewFloat64Schema().NewRef(),
-				},
+				}),
 			}).NewRef(),
 		},
 		Serialization: map[string]any{
@@ -641,13 +646,13 @@ var schemaExamples = []schemaExample{
 			UniqueItems: true,
 			Items: (&Schema{
 				Type: &Types{"object"},
-				Properties: Schemas{
+				Properties: SchemasFromMap(map[string]*SchemaRef{
 					"key1": (&Schema{
 						Type:        &Types{"array"},
 						UniqueItems: true,
 						Items:       NewFloat64Schema().NewRef(),
 					}).NewRef(),
-				},
+				}),
 			}).NewRef(),
 		},
 		Serialization: map[string]any{
@@ -774,9 +779,9 @@ var schemaExamples = []schemaExample{
 				UniqueItems: true,
 				Items: (&Schema{
 					Type: &Types{"object"},
-					Properties: Schemas{
+					Properties: SchemasFromMap(map[string]*SchemaRef{
 						"key1": NewFloat64Schema().NewRef(),
-					},
+					}),
 				}).NewRef(),
 			}).NewRef(),
 		},
@@ -873,9 +878,9 @@ var schemaExamples = []schemaExample{
 		Schema: &Schema{
 			Type:     &Types{"object"},
 			MaxProps: Ptr[uint64](2),
-			Properties: Schemas{
+			Properties: SchemasFromMap(map[string]*SchemaRef{
 				"numberProperty": NewFloat64Schema().NewRef(),
-			},
+			}),
 		},
 		Serialization: map[string]any{
 			"type":          "object",
@@ -1421,7 +1426,7 @@ components:
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
 
-	err = doc.Components.Schemas["Test"].Value.VisitJSON(data)
+	err = doc.Components.Schemas.Value("Test").Value.VisitJSON(data)
 	require.NotNil(t, err)
 	require.NotEqual(t, errSchema, err)
 	require.ErrorContains(t, err, `Error at "/ownerName": Doesn't match schema "not"`)

@@ -51,7 +51,7 @@ func TestOriginTree_RetainedOnlyWhereItCanBeRead(t *testing.T) {
 	// The capability the retained tree exists for: the resolved schema carries
 	// the origin of its own file, not of the $ref site.
 	schema := doc.Paths.Find("/users").Get.Responses.Value("200").Value.
-		Content["application/json"].Schema.Value
+		Content.Value("application/json").Schema.Value
 	require.NotNil(t, schema.Origin, "the resolved schema keeps its origin")
 	require.Contains(t, schema.Origin.Key.File, "arbitrary_key_schemas.yaml")
 }

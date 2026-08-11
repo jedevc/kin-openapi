@@ -45,11 +45,11 @@ var encodingJSON = []byte(`
 func encoding() *Encoding {
 	return &Encoding{
 		ContentType: "application/json",
-		Headers: map[string]*HeaderRef{
+		Headers: HeadersFromMap(map[string]*HeaderRef{
 			"someHeader": {
 				Value: &Header{},
 			},
-		},
+		}),
 		Style:         "form",
 		Explode:       Ptr(true),
 		AllowReserved: true,

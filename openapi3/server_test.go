@@ -149,12 +149,12 @@ func TestServersBasePath(t *testing.T) {
 			title: "URL set with variables",
 			servers: Servers{&Server{
 				URL: "{scheme}://example.com/b/l/a",
-				Variables: map[string]*ServerVariable{
+				Variables: ServerVariablesFromMap(map[string]*ServerVariable{
 					"scheme": {
 						Enum:    []string{"http", "https"},
 						Default: "https",
 					},
-				},
+				}),
 			}},
 			expected: "/b/l/a",
 		},
@@ -162,11 +162,11 @@ func TestServersBasePath(t *testing.T) {
 			title: "URL set with variables in path",
 			servers: Servers{&Server{
 				URL: "http://example.com/b/{var1}/a",
-				Variables: map[string]*ServerVariable{
+				Variables: ServerVariablesFromMap(map[string]*ServerVariable{
 					"var1": {
 						Default: "lllll",
 					},
-				},
+				}),
 			}},
 			expected: "/b/lllll/a",
 		},
@@ -175,19 +175,19 @@ func TestServersBasePath(t *testing.T) {
 			servers: Servers{
 				&Server{
 					URL: "http://example.com/b/{var2}/a",
-					Variables: map[string]*ServerVariable{
+					Variables: ServerVariablesFromMap(map[string]*ServerVariable{
 						"var2": {
 							Default: "LLLLL",
 						},
-					},
+					}),
 				},
 				&Server{
 					URL: "https://example.com/b/{var1}/a",
-					Variables: map[string]*ServerVariable{
+					Variables: ServerVariablesFromMap(map[string]*ServerVariable{
 						"var1": {
 							Default: "lllll",
 						},
-					},
+					}),
 				},
 			},
 			expected: "/b/LLLLL/a",

@@ -13,7 +13,7 @@ type Responses struct {
 	Extensions map[string]any `json:"-" yaml:"-"`
 	Origin     *Origin        `json:"-" yaml:"-"`
 
-	m map[string]*ResponseRef
+	m *OrderedMap[string, *ResponseRef]
 
 	explicitlyNull bool
 }
@@ -153,13 +153,13 @@ func (response Response) MarshalYAML() (any, error) {
 	if x := response.Description; x != nil {
 		m["description"] = x
 	}
-	if x := response.Headers; len(x) != 0 {
+	if x := response.Headers; x.Len() != 0 {
 		m["headers"] = x
 	}
-	if x := response.Content; len(x) != 0 {
+	if x := response.Content; x.Len() != 0 {
 		m["content"] = x
 	}
-	if x := response.Links; len(x) != 0 {
+	if x := response.Links; x.Len() != 0 {
 		m["links"] = x
 	}
 	return m, nil
@@ -195,21 +195,19 @@ func (response *Response) Validate(ctx context.Context, opts ...ValidationOption
 		vo.examplesValidationAsReq, vo.examplesValidationAsRes = false, true
 	}
 
-	if content := response.Content; content != nil {
+	if content := response.Content; content.Len() != 0 {
 		if err := content.Validate(ctx); err != nil {
 			return err
 		}
 	}
 
-	for _, name := range componentNames(response.Headers) {
-		header := response.Headers[name]
+	for _, header := range response.Headers.Iter() {
 		if err := header.Validate(ctx); err != nil {
 			return err
 		}
 	}
 
-	for _, name := range componentNames(response.Links) {
-		link := response.Links[name]
+	for _, link := range response.Links.Iter() {
 		if err := link.Validate(ctx); err != nil {
 			return err
 		}

@@ -43,10 +43,10 @@ func TestJSONSchema2020Validator_Basic(t *testing.T) {
 	t.Run("object validation", func(t *testing.T) {
 		schema := &openapi3.Schema{
 			Type: &openapi3.Types{"object"},
-			Properties: openapi3.Schemas{
-				"name": &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{"string"}}},
-				"age":  &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{"integer"}}},
-			},
+			Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+				"name": {Value: &openapi3.Schema{Type: &openapi3.Types{"string"}}},
+				"age":  {Value: &openapi3.Schema{Type: &openapi3.Types{"integer"}}},
+			}),
 			Required: []string{"name"},
 		}
 
@@ -289,12 +289,12 @@ func TestJSONSchema2020Validator_TransformRecursesInto31Fields(t *testing.T) {
 	t.Run("patternProperties with nullable nested schema", func(t *testing.T) {
 		schema := &openapi3.Schema{
 			Type: &openapi3.Types{"object"},
-			PatternProperties: openapi3.Schemas{
-				"^x-": &openapi3.SchemaRef{Value: &openapi3.Schema{
+			PatternProperties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+				"^x-": {Value: &openapi3.Schema{
 					Type:     &openapi3.Types{"string"},
 					Nullable: true,
 				}},
-			},
+			}),
 		}
 
 		err := schema.VisitJSON(map[string]any{"x-val": nil}, openapi3.EnableJSONSchema2020())
@@ -304,20 +304,20 @@ func TestJSONSchema2020Validator_TransformRecursesInto31Fields(t *testing.T) {
 	t.Run("dependentSchemas with nullable nested schema", func(t *testing.T) {
 		schema := &openapi3.Schema{
 			Type: &openapi3.Types{"object"},
-			Properties: openapi3.Schemas{
-				"name": &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{"string"}}},
-				"tag":  &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{"string"}, Nullable: true}},
-			},
-			DependentSchemas: openapi3.Schemas{
-				"name": &openapi3.SchemaRef{Value: &openapi3.Schema{
-					Properties: openapi3.Schemas{
-						"tag": &openapi3.SchemaRef{Value: &openapi3.Schema{
+			Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+				"name": {Value: &openapi3.Schema{Type: &openapi3.Types{"string"}}},
+				"tag":  {Value: &openapi3.Schema{Type: &openapi3.Types{"string"}, Nullable: true}},
+			}),
+			DependentSchemas: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+				"name": {Value: &openapi3.Schema{
+					Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+						"tag": {Value: &openapi3.Schema{
 							Type:     &openapi3.Types{"string"},
 							Nullable: true,
 						}},
-					},
+					}),
 				}},
-			},
+			}),
 		}
 
 		err := schema.VisitJSON(map[string]any{"name": "foo", "tag": nil}, openapi3.EnableJSONSchema2020())
@@ -359,9 +359,9 @@ func TestJSONSchema2020Validator_TransformRecursesInto31Fields(t *testing.T) {
 	t.Run("unevaluatedProperties with nullable nested schema", func(t *testing.T) {
 		schema := &openapi3.Schema{
 			Type: &openapi3.Types{"object"},
-			Properties: openapi3.Schemas{
-				"name": &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{"string"}}},
-			},
+			Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+				"name": {Value: &openapi3.Schema{Type: &openapi3.Types{"string"}}},
+			}),
 			UnevaluatedProperties: openapi3.BoolSchema{Schema: &openapi3.SchemaRef{Value: &openapi3.Schema{
 				Type:     &openapi3.Types{"string"},
 				Nullable: true,
@@ -404,9 +404,9 @@ func TestBuiltInValidatorStillWorks(t *testing.T) {
 	t.Run("object validation with built-in", func(t *testing.T) {
 		schema := &openapi3.Schema{
 			Type: &openapi3.Types{"object"},
-			Properties: openapi3.Schemas{
-				"name": &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{"string"}}},
-			},
+			Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+				"name": {Value: &openapi3.Schema{Type: &openapi3.Types{"string"}}},
+			}),
 			Required: []string{"name"},
 		}
 

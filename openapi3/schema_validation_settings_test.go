@@ -28,7 +28,7 @@ components:
 		return fmt.Sprintf(`field "%s" should be string`, err.Schema.Title)
 	})
 
-	err = doc.Components.Schemas["Something"].Value.Properties["field"].Value.VisitJSON(123, opt)
+	err = doc.Components.Schemas.Value("Something").Value.Properties.Value("field").Value.VisitJSON(123, opt)
 
 	fmt.Println(err.Error())
 

@@ -56,7 +56,7 @@ func TestDateZeroMonth(t *testing.T) {
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
 
-	err = doc.Components.Schemas["Server"].Value.VisitJSON(map[string]any{
+	err = doc.Components.Schemas.Value("Server").Value.VisitJSON(map[string]any{
 		"name": "kin-openapi",
 		"date": "2001-00-03",
 	})
@@ -71,7 +71,7 @@ func TestDateZeroDay(t *testing.T) {
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
 
-	err = doc.Components.Schemas["Server"].Value.VisitJSON(map[string]any{
+	err = doc.Components.Schemas.Value("Server").Value.VisitJSON(map[string]any{
 		"name": "kin-openapi",
 		"date": "2001-02-00",
 	})
@@ -86,7 +86,7 @@ func TestDateTimeZeroMonth(t *testing.T) {
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
 
-	err = doc.Components.Schemas["Server"].Value.VisitJSON(map[string]any{
+	err = doc.Components.Schemas.Value("Server").Value.VisitJSON(map[string]any{
 		"name":     "kin-openapi",
 		"datetime": "2001-00-03T04:05:06.789Z",
 	})
@@ -101,7 +101,7 @@ func TestDateTimeZeroDay(t *testing.T) {
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
 
-	err = doc.Components.Schemas["Server"].Value.VisitJSON(map[string]any{
+	err = doc.Components.Schemas.Value("Server").Value.VisitJSON(map[string]any{
 		"name":     "kin-openapi",
 		"datetime": "2001-02-00T04:05:06.789Z",
 	})
@@ -116,7 +116,7 @@ func TestDateTimeLeapSecond(t *testing.T) {
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
 
-	err = doc.Components.Schemas["Server"].Value.VisitJSON(map[string]any{
+	err = doc.Components.Schemas.Value("Server").Value.VisitJSON(map[string]any{
 		"name":     "kin-openapi",
 		"datetime": "2016-12-31T23:59:60.000Z", // exact time of the most recent leap second
 	})
@@ -131,7 +131,7 @@ func TestDateTimeHourOutOfBounds(t *testing.T) {
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
 
-	err = doc.Components.Schemas["Server"].Value.VisitJSON(map[string]any{
+	err = doc.Components.Schemas.Value("Server").Value.VisitJSON(map[string]any{
 		"name":     "kin-openapi",
 		"datetime": "2016-12-31T24:00:00.000Z",
 	})
@@ -146,7 +146,7 @@ func TestDateTimeMinuteOutOfBounds(t *testing.T) {
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
 
-	err = doc.Components.Schemas["Server"].Value.VisitJSON(map[string]any{
+	err = doc.Components.Schemas.Value("Server").Value.VisitJSON(map[string]any{
 		"name":     "kin-openapi",
 		"datetime": "2016-12-31T23:60:00.000Z",
 	})
@@ -161,7 +161,7 @@ func TestDateTimeSecondOutOfBounds(t *testing.T) {
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
 
-	err = doc.Components.Schemas["Server"].Value.VisitJSON(map[string]any{
+	err = doc.Components.Schemas.Value("Server").Value.VisitJSON(map[string]any{
 		"name":     "kin-openapi",
 		"datetime": "2016-12-31T23:59:61.000Z",
 	})

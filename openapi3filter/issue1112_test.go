@@ -13,7 +13,7 @@ func issue1112ObjectSchema(additional openapi3.AdditionalProperties) *openapi3.S
 	return &openapi3.SchemaRef{
 		Value: &openapi3.Schema{
 			Type:                 &openapi3.Types{"object"},
-			Properties:           make(map[string]*openapi3.SchemaRef),
+			Properties:           *openapi3.NewSchemas(),
 			AdditionalProperties: additional,
 		},
 	}
@@ -100,9 +100,9 @@ func TestIssue1112EmptyFreeFormValue(t *testing.T) {
 
 func TestIssue1112KnownPropertyKeepsTypedValue(t *testing.T) {
 	schema := issue1112ObjectSchema(openapi3.AdditionalProperties{Has: openapi3.Ptr(true)})
-	schema.Value.Properties["limit"] = &openapi3.SchemaRef{
+	schema.Value.Properties.Set("limit", &openapi3.SchemaRef{
 		Value: &openapi3.Schema{Type: &openapi3.Types{"integer"}},
-	}
+	})
 
 	value, found, err := issue1112Decode(t, "properties", "properties[limit]=7&properties[color]=black", schema)
 
@@ -180,7 +180,7 @@ func TestIssue1112RepeatedFreeFormValueStillRequiresIndexes(t *testing.T) {
 func TestIssue1112NestedKnownFreeFormObject(t *testing.T) {
 	metaSchema := issue1112ObjectSchema(openapi3.AdditionalProperties{Has: openapi3.Ptr(true)})
 	schema := issue1112ObjectSchema(openapi3.AdditionalProperties{})
-	schema.Value.Properties["meta"] = metaSchema
+	schema.Value.Properties.Set("meta", metaSchema)
 
 	value, found, err := issue1112Decode(t, "properties", "properties[meta][color]=black", schema)
 
@@ -195,16 +195,16 @@ func TestIssue1112SchemaValuedNestedExtraneousPropertyRemainsIgnored(t *testing.
 	childSchema := &openapi3.SchemaRef{
 		Value: &openapi3.Schema{
 			Type: &openapi3.Types{"object"},
-			Properties: map[string]*openapi3.SchemaRef{
+			Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
 				"item1": {
 					Value: &openapi3.Schema{Type: &openapi3.Types{"integer"}},
 				},
-			},
+			}),
 		},
 	}
 	dynamicObject := issue1112ObjectSchema(openapi3.AdditionalProperties{Schema: childSchema})
 	schema := issue1112ObjectSchema(openapi3.AdditionalProperties{})
-	schema.Value.Properties["obj"] = dynamicObject
+	schema.Value.Properties.Set("obj", dynamicObject)
 
 	value, found, err := issue1112Decode(t, "param", "param[obj][prop1][inexistent]=1", schema)
 

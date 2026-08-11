@@ -155,7 +155,7 @@ func populateDefaultQueryParameters(q url.Values, parameterName string, value an
 // The function returns RequestError with ErrInvalidEmptyValue cause when a value of a required parameter is not defined.
 // The function returns RequestError with a openapi3.SchemaError cause when a value is invalid by JSON schema.
 func ValidateParameter(ctx context.Context, input *RequestValidationInput, parameter *openapi3.Parameter) error {
-	if parameter.Schema == nil && parameter.Content == nil {
+	if parameter.Schema == nil && parameter.Content.Len() == 0 {
 		// We have no schema for the parameter. Assume that everything passes
 		// a schema-less check, but this could also be an error. The OpenAPI
 		// validation allows this to happen.
@@ -173,7 +173,7 @@ func ValidateParameter(ctx context.Context, input *RequestValidationInput, param
 	var schema *openapi3.Schema
 
 	// Validation will ensure that we either have content or schema.
-	if parameter.Content != nil {
+	if parameter.Content.Len() != 0 {
 		if value, schema, found, err = decodeContentParameter(parameter, input); err != nil {
 			return &RequestError{Input: input, Parameter: parameter, Err: err}
 		}
@@ -305,7 +305,7 @@ func ValidateRequestBody(ctx context.Context, input *RequestValidationInput, req
 	}
 
 	content := requestBody.Content
-	if len(content) == 0 {
+	if content.Len() == 0 {
 		// A request's body does not have declared content, so skip validation.
 		return nil
 	}
@@ -325,7 +325,7 @@ func ValidateRequestBody(ctx context.Context, input *RequestValidationInput, req
 		return nil
 	}
 
-	encFn := func(name string) *openapi3.Encoding { return contentType.Encoding[name] }
+	encFn := func(name string) *openapi3.Encoding { return contentType.Encoding.Value(name) }
 	mediaType, value, err := decodeBody(bytes.NewReader(data), req.Header, contentType.Schema, encFn)
 	if err != nil {
 		return &RequestError{
@@ -438,7 +438,7 @@ func validateSecurityRequirement(ctx context.Context, input *RequestValidationIn
 		return ErrAuthenticationServiceMissing
 	}
 
-	var securitySchemes openapi3.SecuritySchemes
+	var securitySchemes *openapi3.SecuritySchemes
 	if components := input.Route.Spec.Components; components != nil {
 		securitySchemes = components.SecuritySchemes
 	}
@@ -463,7 +463,7 @@ func validateSecurityRequirement(ctx context.Context, input *RequestValidationIn
 	for _, name := range names {
 		var securityScheme *openapi3.SecurityScheme
 		if securitySchemes != nil {
-			if ref := securitySchemes[name]; ref != nil {
+			if ref := securitySchemes.Value(name); ref != nil {
 				securityScheme = ref.Value
 			}
 		}

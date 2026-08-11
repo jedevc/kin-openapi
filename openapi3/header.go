@@ -70,7 +70,7 @@ func (header *Header) Validate(ctx context.Context, opts ...ValidationOption) er
 		return &HeaderFieldValidationError{Field: "schema", Cause: e}
 	}
 
-	if (header.Schema == nil) == (len(header.Content) == 0) {
+	if (header.Schema == nil) == (header.Content.Len() == 0) {
 		return &HeaderFieldValidationError{Field: "schema",
 			Cause: newHeaderContentSchemaExactlyOne(header, header.Origin)}
 	}
@@ -80,8 +80,8 @@ func (header *Header) Validate(ctx context.Context, opts ...ValidationOption) er
 		}
 	}
 
-	if content := header.Content; content != nil {
-		if len(content) > 1 {
+	if content := header.Content; content.Len() != 0 {
+		if content.Len() > 1 {
 			return &HeaderFieldValidationError{Field: "content",
 				Cause: newHeaderContentSingleEntry(header.Origin)}
 		}

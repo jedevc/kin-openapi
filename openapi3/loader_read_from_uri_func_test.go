@@ -53,9 +53,9 @@ func TestLoaderReadFromURIFunc(t *testing.T) {
 		Responses.Status(200).Value.
 		Content.Get("application/json").
 		Schema.Value.
-		Properties["foo2"].Value.
-		Properties["foo"].Value.
-		Properties["bar"].Value.
+		Properties.Value("foo2").Value.
+		Properties.Value("foo").Value.
+		Properties.Value("bar").Value.
 		Example)
 }
 
@@ -103,7 +103,7 @@ func TestResolveSchemaExternalRef(t *testing.T) {
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
 
-	refRootVisited := doc.Components.Schemas["Root"].Value.AllOf[0]
+	refRootVisited := doc.Components.Schemas.Value("Root").Value.AllOf[0]
 	require.Equal(t, fmt.Sprintf("%s#/components/schemas/External", externalLocation.String()), refRootVisited.Ref)
 	require.NotNil(t, refRootVisited.Value)
 }

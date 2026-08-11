@@ -391,17 +391,20 @@ func NewCallbackWithCapacity(cap int) *Callback
 func (callback *Callback) Delete(key string)
     Delete removes the entry associated with key 'key' from 'callback'.
 
+func (callback *Callback) Iter() iter.Seq2[string, *PathItem]
+    Iter returns an iterator over callback in insertion order.
+
 func (callback Callback) JSONLookup(token string) (any, error)
     JSONLookup implements
     https://github.com/go-openapi/jsonpointer#JSONPointable
 
 func (callback *Callback) Keys() []string
-    Keys returns the callback keys in a fixed order
+    Keys returns the callback keys in insertion order.
 
 func (callback *Callback) Len() int
     Len returns the amount of keys in callback excluding callback.Extensions.
 
-func (callback *Callback) Map() (m map[string]*PathItem)
+func (callback *Callback) Map() map[string]*PathItem
     Map returns callback as a 'map'. Note: iteration on Go maps is not ordered.
 
 func (callback *Callback) MarshalJSON() ([]byte, error)
@@ -414,7 +417,7 @@ func (callback *Callback) Set(key string, value *PathItem)
     Set adds or replaces key 'key' of 'callback' with 'value'. Note: 'callback'
     MUST be non-nil
 
-func (callback *Callback) UnmarshalJSON(data []byte) (err error)
+func (callback *Callback) UnmarshalJSON(data []byte) error
     UnmarshalJSON sets Callback to a copy of data.
 
 func (callback *Callback) Validate(ctx context.Context, opts ...ValidationOption) error
@@ -467,11 +470,14 @@ func (x *CallbackRef) Validate(ctx context.Context, opts ...ValidationOption) er
     Validate returns an error if CallbackRef does not comply with the OpenAPI
     spec.
 
-type Callbacks map[string]*CallbackRef // Callbacks represents components' named callbacks
+type Callbacks = ComponentMap[CallbackRef]
+    Callbacks is an ordered map of CallbackRef.
 
-func (m Callbacks) JSONLookup(token string) (any, error)
-    JSONLookup implements
-    https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
+func CallbacksFromMap(m map[string]*CallbackRef) Callbacks
+
+func NewCallbacks() *Callbacks
+
+func NewCallbacksWithCapacity(cap int) *Callbacks
 
 type CodedError interface {
 	error
@@ -505,6 +511,42 @@ func (e *CommentFieldFor31Plus) As(target any) bool
 
 func (e *CommentFieldFor31Plus) Code() string
 
+type ComponentMap[E any] struct {
+	// Has unexported fields.
+}
+    ComponentMap is an ordered map of *E, keyed by component name. Iteration
+    follows the order the entries were read from (or added to) the document.
+
+func ComponentMapFromMap[E any](m map[string]*E) ComponentMap[E]
+
+func NewComponentMap[E any]() *ComponentMap[E]
+
+func NewComponentMapWithCapacity[E any](cap int) *ComponentMap[E]
+
+func (cm *ComponentMap[E]) Delete(key string)
+
+func (cm *ComponentMap[E]) Get(key string) (*E, bool)
+
+func (cm *ComponentMap[E]) Iter() iter.Seq2[string, *E]
+
+func (cm *ComponentMap[E]) JSONLookup(token string) (any, error)
+
+func (cm *ComponentMap[E]) Keys() []string
+
+func (cm *ComponentMap[E]) Len() int
+
+func (cm *ComponentMap[E]) Map() map[string]*E
+
+func (cm ComponentMap[E]) MarshalJSON() ([]byte, error)
+
+func (cm ComponentMap[E]) MarshalYAML() (any, error)
+
+func (cm *ComponentMap[E]) Set(key string, value *E)
+
+func (cm *ComponentMap[E]) UnmarshalJSON(data []byte) error
+
+func (cm *ComponentMap[E]) Value(key string) *E
+
 type ComponentRef interface {
 	RefString() string
 	RefPath() *url.URL
@@ -532,15 +574,15 @@ type Components struct {
 	Extensions map[string]any `json:"-" yaml:"-"`
 	Origin     *Origin        `json:"-" yaml:"-"`
 
-	Schemas         Schemas         `json:"schemas,omitempty" yaml:"schemas,omitempty"`
-	Parameters      ParametersMap   `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-	Headers         Headers         `json:"headers,omitempty" yaml:"headers,omitempty"`
-	RequestBodies   RequestBodies   `json:"requestBodies,omitempty" yaml:"requestBodies,omitempty"`
-	Responses       ResponseBodies  `json:"responses,omitempty" yaml:"responses,omitempty"`
-	SecuritySchemes SecuritySchemes `json:"securitySchemes,omitempty" yaml:"securitySchemes,omitempty"`
-	Examples        Examples        `json:"examples,omitempty" yaml:"examples,omitempty"`
-	Links           Links           `json:"links,omitempty" yaml:"links,omitempty"`
-	Callbacks       Callbacks       `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
+	Schemas         *Schemas         `json:"schemas,omitempty" yaml:"schemas,omitempty"`
+	Parameters      *ParametersMap   `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	Headers         *Headers         `json:"headers,omitempty" yaml:"headers,omitempty"`
+	RequestBodies   *RequestBodies   `json:"requestBodies,omitempty" yaml:"requestBodies,omitempty"`
+	Responses       *ResponseBodies  `json:"responses,omitempty" yaml:"responses,omitempty"`
+	SecuritySchemes *SecuritySchemes `json:"securitySchemes,omitempty" yaml:"securitySchemes,omitempty"`
+	Examples        *Examples        `json:"examples,omitempty" yaml:"examples,omitempty"`
+	Links           *Links           `json:"links,omitempty" yaml:"links,omitempty"`
+	Callbacks       *Callbacks       `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
 }
     Components is specified by OpenAPI/Swagger standard version 3. See
     https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.3.md#components-object
@@ -612,10 +654,16 @@ func (e *ContainsFieldFor31Plus) As(target any) bool
 
 func (e *ContainsFieldFor31Plus) Code() string
 
-type Content map[string]*MediaType
+type Content struct {
+	// Has unexported fields.
+}
     Content is specified by OpenAPI/Swagger 3.0 standard.
 
+func ContentFromMap(m map[string]*MediaType) Content
+
 func NewContent() Content
+
+func NewContentWithCapacity(cap int) Content
 
 func NewContentWithFormDataSchema(schema *Schema) Content
 
@@ -629,10 +677,46 @@ func NewContentWithSchema(schema *Schema, consumes []string) Content
 
 func NewContentWithSchemaRef(schema *SchemaRef, consumes []string) Content
 
+func (content Content) Delete(mime string)
+    Delete removes the media type keyed by mime.
+
 func (content Content) Get(mime string) *MediaType
+    Get resolves the media type most applicable to mime, falling back through
+    the x/y, x/*, and */* wildcard patterns as per the OpenAPI spec.
+
+func (content Content) Iter() iter.Seq2[string, *MediaType]
+    Iter returns an iterator over the content's mime types in insertion order.
+
+func (content Content) JSONLookup(token string) (any, error)
+    JSONLookup implements
+    https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
+
+func (content Content) Keys() []string
+    Keys returns the content's mime types in insertion order.
+
+func (content Content) Len() int
+    Len returns the number of media types in content.
+
+func (content Content) Map() map[string]*MediaType
+    Map returns content as a 'map'. Note: iteration on Go maps is not ordered.
+
+func (content Content) MarshalJSON() ([]byte, error)
+    MarshalJSON returns the JSON encoding of Content, preserving key order.
+
+func (content Content) MarshalYAML() (any, error)
+    MarshalYAML returns the YAML encoding of Content.
+
+func (content *Content) Set(mime string, value *MediaType)
+    Set adds or replaces a media type keyed by mime.
+
+func (content *Content) UnmarshalJSON(data []byte) error
+    UnmarshalJSON sets Content to a copy of data.
 
 func (content Content) Validate(ctx context.Context, opts ...ValidationOption) error
     Validate returns an error if Content does not comply with the OpenAPI spec.
+
+func (content Content) Value(mime string) *MediaType
+    Value returns the media type keyed by the exact mime given, or nil.
 
 type ContentEncodingFieldFor31Plus struct{ ValidationError }
 
@@ -837,8 +921,14 @@ func (encoding *Encoding) WithHeader(name string, header *Header) *Encoding
 
 func (encoding *Encoding) WithHeaderRef(name string, ref *HeaderRef) *Encoding
 
-type Encodings map[string]*Encoding
-    Encodings is a map of encoding objects keyed by field name.
+type Encodings = ComponentMap[Encoding]
+    Encodings is an ordered map of Encoding, keyed by field name.
+
+func EncodingsFromMap(m map[string]*Encoding) Encodings
+
+func NewEncodings() *Encodings
+
+func NewEncodingsWithCapacity(cap int) *Encodings
 
 type ExactlyOneFieldError struct {
 	// Fields is the set of fields, exactly one of which must be set
@@ -949,11 +1039,14 @@ func (e *ExampleViolatesSchema) As(target any) bool
 
 func (e *ExampleViolatesSchema) Code() string
 
-type Examples map[string]*ExampleRef // Examples represents components' named examples
+type Examples = ComponentMap[ExampleRef]
+    Examples is an ordered map of ExampleRef.
 
-func (m Examples) JSONLookup(token string) (any, error)
-    JSONLookup implements
-    https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
+func ExamplesFromMap(m map[string]*ExampleRef) Examples
+
+func NewExamples() *Examples
+
+func NewExamplesWithCapacity(cap int) *Examples
 
 type ExamplesFieldFor31Plus struct{ ValidationError }
 
@@ -1238,11 +1331,14 @@ func (x *HeaderRef) Validate(ctx context.Context, opts ...ValidationOption) erro
     Validate returns an error if HeaderRef does not comply with the OpenAPI
     spec.
 
-type Headers map[string]*HeaderRef // Headers represents components' named headers
+type Headers = ComponentMap[HeaderRef]
+    Headers is an ordered map of HeaderRef.
 
-func (m Headers) JSONLookup(token string) (any, error)
-    JSONLookup implements
-    https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
+func HeadersFromMap(m map[string]*HeaderRef) Headers
+
+func NewHeaders() *Headers
+
+func NewHeadersWithCapacity(cap int) *Headers
 
 type IDFieldFor31Plus struct{ ValidationError }
 
@@ -1529,11 +1625,14 @@ func (x *LinkRef) UnmarshalJSON(data []byte) error
 func (x *LinkRef) Validate(ctx context.Context, opts ...ValidationOption) error
     Validate returns an error if LinkRef does not comply with the OpenAPI spec.
 
-type Links map[string]*LinkRef // Links represents components' named links
+type Links = ComponentMap[LinkRef]
+    Links is an ordered map of LinkRef.
 
-func (m Links) JSONLookup(token string) (any, error)
-    JSONLookup implements
-    https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
+func LinksFromMap(m map[string]*LinkRef) Links
+
+func NewLinks() *Links
+
+func NewLinksWithCapacity(cap int) *Links
 
 type Loader struct {
 	// IsExternalRefsAllowed enables visiting other files. Enforced only when
@@ -1954,6 +2053,54 @@ func (e *OperationValidationError) Error() string
 
 func (e *OperationValidationError) Unwrap() error
 
+type OrderedMap[K comparable, V any] struct {
+	// Has unexported fields.
+}
+    OrderedMap is a generic map that preserves insertion order. It wraps
+    github.com/wk8/go-ordered-map/v2 with a simpler API.
+
+func NewOrderedMap[K comparable, V any]() *OrderedMap[K, V]
+    NewOrderedMap creates a new OrderedMap with optional initial capacity.
+
+func NewOrderedMapWithCapacity[K comparable, V any](cap int) *OrderedMap[K, V]
+    NewOrderedMapWithCapacity creates a new OrderedMap with the given capacity.
+
+func (om *OrderedMap[K, V]) Clone() *OrderedMap[K, V]
+    Clone returns a shallow copy of the ordered map.
+
+func (om *OrderedMap[K, V]) Delete(key K)
+    Delete removes a key from the map.
+
+func (om *OrderedMap[K, V]) Get(key K) (V, bool)
+    Get returns the value for the given key and whether it was found.
+
+func (om *OrderedMap[K, V]) Iter() iter.Seq2[K, V]
+    Iter returns an iterator over key-value pairs in insertion order.
+
+func (om *OrderedMap[K, V]) Keys() []K
+    Keys returns a slice of all keys in insertion order.
+
+func (om *OrderedMap[K, V]) Len() int
+    Len returns the number of entries in the map.
+
+func (om *OrderedMap[K, V]) Map() map[K]V
+    Map returns a regular map copy of the ordered map. Note: iteration on Go
+    maps is not ordered.
+
+func (om *OrderedMap[K, V]) MarshalJSON() ([]byte, error)
+    MarshalJSON implements json.Marshaler, preserving key order.
+
+func (om *OrderedMap[K, V]) Set(key K, value V)
+    Set adds or updates a key-value pair in the map.
+
+func (om *OrderedMap[K, V]) UnmarshalJSON(data []byte) error
+    UnmarshalJSON implements json.Unmarshaler, preserving key order. Note: This
+    only works for OrderedMap[string, V] where V implements json.Unmarshaler or
+    is a basic JSON type.
+
+func (om *OrderedMap[K, V]) Value(key K) V
+    Value returns the value for the given key, or the zero value if not found.
+
 type Origin struct {
 	Key       *Location             `json:"key,omitempty" yaml:"key,omitempty"`
 	Fields    FieldLocations        `json:"fields,omitempty" yaml:"fields,omitempty"`
@@ -2139,11 +2286,14 @@ func (parameters Parameters) Validate(ctx context.Context, opts ...ValidationOpt
     Validate returns an error if Parameters does not comply with the OpenAPI
     spec.
 
-type ParametersMap map[string]*ParameterRef // ParametersMap represents components' named parameters
+type ParametersMap = ComponentMap[ParameterRef]
+    ParametersMap is an ordered map of ParameterRef.
 
-func (m ParametersMap) JSONLookup(token string) (any, error)
-    JSONLookup implements
-    https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
+func NewParametersMap() *ParametersMap
+
+func NewParametersMapWithCapacity(cap int) *ParametersMap
+
+func ParametersMapFromMap(m map[string]*ParameterRef) ParametersMap
 
 type PathItem struct {
 	Extensions map[string]any `json:"-" yaml:"-"`
@@ -2300,17 +2450,20 @@ func (paths *Paths) InMatchingOrder() []string
     When matching URLs, concrete (non-templated) paths would be matched before
     their templated counterparts.
 
+func (paths *Paths) Iter() iter.Seq2[string, *PathItem]
+    Iter returns an iterator over paths in insertion order.
+
 func (paths Paths) JSONLookup(token string) (any, error)
     JSONLookup implements
     https://github.com/go-openapi/jsonpointer#JSONPointable
 
 func (paths *Paths) Keys() []string
-    Keys returns the paths keys in a fixed order
+    Keys returns the paths keys in insertion order.
 
 func (paths *Paths) Len() int
     Len returns the amount of keys in paths excluding paths.Extensions.
 
-func (paths *Paths) Map() (m map[string]*PathItem)
+func (paths *Paths) Map() map[string]*PathItem
     Map returns paths as a 'map'. Note: iteration on Go maps is not ordered.
 
 func (paths *Paths) MarshalJSON() ([]byte, error)
@@ -2323,7 +2476,7 @@ func (paths *Paths) Set(key string, value *PathItem)
     Set adds or replaces key 'key' of 'paths' with 'value'. Note: 'paths' MUST
     be non-nil
 
-func (paths *Paths) UnmarshalJSON(data []byte) (err error)
+func (paths *Paths) UnmarshalJSON(data []byte) error
     UnmarshalJSON sets Paths to a copy of data.
 
 func (paths *Paths) Validate(ctx context.Context, opts ...ValidationOption) error
@@ -2417,11 +2570,14 @@ type RegexMatcher interface {
 	MatchString(s string) bool
 }
 
-type RequestBodies map[string]*RequestBodyRef // RequestBodies represents components' named request bodies
+type RequestBodies = ComponentMap[RequestBodyRef]
+    RequestBodies is an ordered map of RequestBodyRef.
 
-func (m RequestBodies) JSONLookup(token string) (any, error)
-    JSONLookup implements
-    https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
+func NewRequestBodies() *RequestBodies
+
+func NewRequestBodiesWithCapacity(cap int) *RequestBodies
+
+func RequestBodiesFromMap(m map[string]*RequestBodyRef) RequestBodies
 
 type RequestBody struct {
 	Extensions map[string]any `json:"-" yaml:"-"`
@@ -2580,11 +2736,14 @@ func (response *Response) WithJSONSchema(schema *Schema) *Response
 
 func (response *Response) WithJSONSchemaRef(schema *SchemaRef) *Response
 
-type ResponseBodies map[string]*ResponseRef // ResponseBodies represents components' named response bodies
+type ResponseBodies = ComponentMap[ResponseRef]
+    ResponseBodies is an ordered map of ResponseRef (for components/responses).
 
-func (m ResponseBodies) JSONLookup(token string) (any, error)
-    JSONLookup implements
-    https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
+func NewResponseBodies() *ResponseBodies
+
+func NewResponseBodiesWithCapacity(cap int) *ResponseBodies
+
+func ResponseBodiesFromMap(m map[string]*ResponseRef) ResponseBodies
 
 type ResponseDescriptionRequired struct{ ValidationError }
 
@@ -2658,17 +2817,20 @@ func (responses *Responses) Default() *ResponseRef
 func (responses *Responses) Delete(key string)
     Delete removes the entry associated with key 'key' from 'responses'.
 
+func (responses *Responses) Iter() iter.Seq2[string, *ResponseRef]
+    Iter returns an iterator over responses in insertion order.
+
 func (responses Responses) JSONLookup(token string) (any, error)
     JSONLookup implements
     https://github.com/go-openapi/jsonpointer#JSONPointable
 
 func (responses *Responses) Keys() []string
-    Keys returns the responses keys in a fixed order
+    Keys returns the responses keys in insertion order.
 
 func (responses *Responses) Len() int
     Len returns the amount of keys in responses excluding responses.Extensions.
 
-func (responses *Responses) Map() (m map[string]*ResponseRef)
+func (responses *Responses) Map() map[string]*ResponseRef
     Map returns responses as a 'map'. Note: iteration on Go maps is not ordered.
 
 func (responses *Responses) MarshalJSON() ([]byte, error)
@@ -2687,7 +2849,7 @@ func (responses *Responses) Status(status int) *ResponseRef
     the first digit to determine the range (eg: 201 to 2XX) See
     https://spec.openapis.org/oas/v3.0.3#patterned-fields-0
 
-func (responses *Responses) UnmarshalJSON(data []byte) (err error)
+func (responses *Responses) UnmarshalJSON(data []byte) error
     UnmarshalJSON sets Responses to a copy of data.
 
 func (responses *Responses) Validate(ctx context.Context, opts ...ValidationOption) error
@@ -3235,11 +3397,14 @@ func (e *SchemaValueError) Error() string
 
 func (e *SchemaValueError) Unwrap() error
 
-type Schemas map[string]*SchemaRef // Schemas represents components' named schemas
+type Schemas = ComponentMap[SchemaRef]
+    Schemas is an ordered map of SchemaRef.
 
-func (m Schemas) JSONLookup(token string) (any, error)
-    JSONLookup implements
-    https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
+func NewSchemas() *Schemas
+
+func NewSchemasWithCapacity(cap int) *Schemas
+
+func SchemasFromMap(m map[string]*SchemaRef) Schemas
 
 type SectionValidationError struct {
 	Section string
@@ -3415,11 +3580,14 @@ func (x *SecuritySchemeRef) Validate(ctx context.Context, opts ...ValidationOpti
     Validate returns an error if SecuritySchemeRef does not comply with the
     OpenAPI spec.
 
-type SecuritySchemes map[string]*SecuritySchemeRef // SecuritySchemes represents components' named security schemes
+type SecuritySchemes = ComponentMap[SecuritySchemeRef]
+    SecuritySchemes is an ordered map of SecuritySchemeRef.
 
-func (m SecuritySchemes) JSONLookup(token string) (any, error)
-    JSONLookup implements
-    https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
+func NewSecuritySchemes() *SecuritySchemes
+
+func NewSecuritySchemesWithCapacity(cap int) *SecuritySchemes
+
+func SecuritySchemesFromMap(m map[string]*SecuritySchemeRef) SecuritySchemes
 
 type SerializationMethod struct {
 	Style   string
@@ -3500,6 +3668,8 @@ type ServerVariable struct {
 	Default     string   `json:"default,omitempty" yaml:"default,omitempty"`
 	Description string   `json:"description,omitempty" yaml:"description,omitempty"`
 }
+    ServerVariable is specified by OpenAPI/Swagger standard version 3. See
+    https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.3.md#server-variable-object
 
 func (serverVariable ServerVariable) MarshalJSON() ([]byte, error)
     MarshalJSON returns the JSON encoding of ServerVariable.
@@ -3520,10 +3690,14 @@ func (e *ServerVariableDefaultRequired) As(target any) bool
 
 func (e *ServerVariableDefaultRequired) Code() string
 
-type ServerVariables map[string]*ServerVariable
-    ServerVariable is specified by OpenAPI/Swagger standard version 3. See
-    https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.3.md#server-variable-object
-    ServerVariables is a map of ServerVariable objects keyed by variable name.
+type ServerVariables = ComponentMap[ServerVariable]
+    ServerVariables is an ordered map of ServerVariable, keyed by variable name.
+
+func NewServerVariables() *ServerVariables
+
+func NewServerVariablesWithCapacity(cap int) *ServerVariables
+
+func ServerVariablesFromMap(m map[string]*ServerVariable) ServerVariables
 
 type Servers []*Server
     Servers is specified by OpenAPI/Swagger standard version 3.
@@ -3576,7 +3750,7 @@ type T struct {
 	Servers           Servers              `json:"servers,omitempty" yaml:"servers,omitempty"`
 	Tags              Tags                 `json:"tags,omitempty" yaml:"tags,omitempty"`
 	ExternalDocs      *ExternalDocs        `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
-	Webhooks          map[string]*PathItem `json:"webhooks,omitempty" yaml:"webhooks,omitempty"`                   // OpenAPI >=3.1
+	Webhooks          Webhooks             `json:"webhooks,omitempty" yaml:"webhooks,omitempty"`                   // OpenAPI >=3.1
 	JSONSchemaDialect string               `json:"jsonSchemaDialect,omitempty" yaml:"jsonSchemaDialect,omitempty"` // OpenAPI >=3.1
 
 	// Has unexported fields.
@@ -4105,6 +4279,15 @@ type WebhookValidationError struct {
 func (e *WebhookValidationError) Error() string
 
 func (e *WebhookValidationError) Unwrap() error
+
+type Webhooks = ComponentMap[PathItem]
+    Webhooks is an ordered map of PathItem, keyed by webhook name.
+
+func NewWebhooks() *Webhooks
+
+func NewWebhooksWithCapacity(cap int) *Webhooks
+
+func WebhooksFromMap(m map[string]*PathItem) Webhooks
 
 type WebhooksFieldFor31Plus struct{ ValidationError }
 

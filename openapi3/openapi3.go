@@ -26,7 +26,7 @@ type T struct {
 	Servers           Servers              `json:"servers,omitempty" yaml:"servers,omitempty"`
 	Tags              Tags                 `json:"tags,omitempty" yaml:"tags,omitempty"`
 	ExternalDocs      *ExternalDocs        `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
-	Webhooks          map[string]*PathItem `json:"webhooks,omitempty" yaml:"webhooks,omitempty"`                   // OpenAPI >=3.1
+	Webhooks          Webhooks             `json:"webhooks,omitempty" yaml:"webhooks,omitempty"`                   // OpenAPI >=3.1
 	JSONSchemaDialect string               `json:"jsonSchemaDialect,omitempty" yaml:"jsonSchemaDialect,omitempty"` // OpenAPI >=3.1
 
 	visited visitedComponent
@@ -147,7 +147,7 @@ func (doc *T) MarshalYAML() (any, error) {
 	if x := doc.ExternalDocs; x != nil {
 		m["externalDocs"] = x
 	}
-	if x := doc.Webhooks; len(x) != 0 {
+	if x := doc.Webhooks; x.Len() != 0 {
 		m["webhooks"] = x
 	}
 	if x := doc.JSONSchemaDialect; x != "" {
@@ -280,7 +280,7 @@ func (doc *T) Validate(ctx context.Context, opts ...ValidationOption) error {
 		}
 	}
 
-	if doc.Webhooks != nil && !doc.IsOpenAPI31OrLater() {
+	if doc.Webhooks.m != nil && !doc.IsOpenAPI31OrLater() {
 		if err := me.emit(newWebhooksFieldFor31Plus(doc.Origin)); err != nil {
 			return err
 		}
@@ -353,8 +353,7 @@ func (doc *T) Validate(ctx context.Context, opts ...ValidationOption) error {
 	}
 
 	wrap = wrapSection("webhooks")
-	for _, name := range componentNames(doc.Webhooks) {
-		pathItem := doc.Webhooks[name]
+	for name, pathItem := range doc.Webhooks.Iter() {
 		if pathItem == nil {
 			if err := me.emit(wrap(newWebhookNil(name))); err != nil {
 				return err

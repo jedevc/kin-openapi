@@ -161,14 +161,14 @@ func TestRouter(t *testing.T) {
 
 	doc.Servers = []*openapi3.Server{
 		{URL: "https://www.example.com/api/v1"},
-		{URL: "{scheme}://{d0}.{d1}.com/api/v1/", Variables: map[string]*openapi3.ServerVariable{
+		{URL: "{scheme}://{d0}.{d1}.com/api/v1/", Variables: openapi3.ServerVariablesFromMap(map[string]*openapi3.ServerVariable{
 			"d0":     {Default: "www"},
 			"d1":     {Default: "example", Enum: []string{"example"}},
 			"scheme": {Default: "https", Enum: []string{"https", "http"}},
-		}},
-		{URL: "http://127.0.0.1:{port}/api/v1", Variables: map[string]*openapi3.ServerVariable{
+		})},
+		{URL: "http://127.0.0.1:{port}/api/v1", Variables: openapi3.ServerVariablesFromMap(map[string]*openapi3.ServerVariable{
 			"port": {Default: "8000"},
-		}},
+		})},
 	}
 	err = doc.Validate(context.Background())
 	require.NoError(t, err)
@@ -190,9 +190,9 @@ func TestRouter(t *testing.T) {
 	})
 
 	doc.Servers = []*openapi3.Server{
-		{URL: "{server}", Variables: map[string]*openapi3.ServerVariable{
+		{URL: "{server}", Variables: openapi3.ServerVariablesFromMap(map[string]*openapi3.ServerVariable{
 			"server": {Default: "/api/v1"},
-		}},
+		})},
 	}
 	err = doc.Validate(context.Background())
 	require.NoError(t, err)
@@ -215,12 +215,12 @@ func TestRouter(t *testing.T) {
 
 func TestPermuteScheme(t *testing.T) {
 	scheme0 := "{sche}{me}"
-	server := &openapi3.Server{URL: scheme0 + "://{d0}.{d1}.com/api/v1/", Variables: map[string]*openapi3.ServerVariable{
+	server := &openapi3.Server{URL: scheme0 + "://{d0}.{d1}.com/api/v1/", Variables: openapi3.ServerVariablesFromMap(map[string]*openapi3.ServerVariable{
 		"d0":   {Default: "www"},
 		"d1":   {Default: "example", Enum: []string{"example"}},
 		"sche": {Default: "http"},
 		"me":   {Default: "s", Enum: []string{"", "s"}},
-	}}
+	})}
 	err := server.Validate(context.Background())
 	require.NoError(t, err)
 	perms := permutePart(scheme0, server)
@@ -490,16 +490,16 @@ func Test_makeServers(t *testing.T) {
 }
 
 func newServerWithVariables(url string, variables map[string]string) *openapi3.Server {
-	var serverVariables = map[string]*openapi3.ServerVariable{}
+	serverVariables := openapi3.NewServerVariablesWithCapacity(len(variables))
 
 	for key, value := range variables {
-		serverVariables[key] = newServerVariable(value)
+		serverVariables.Set(key, newServerVariable(value))
 	}
 
 	return &openapi3.Server{
 		URL:         url,
 		Description: "",
-		Variables:   serverVariables,
+		Variables:   *serverVariables,
 	}
 }
 

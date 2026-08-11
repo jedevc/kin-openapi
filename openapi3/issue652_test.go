@@ -20,9 +20,10 @@ func TestIssue652(t *testing.T) {
 
 		spec, err := loader.LoadFromFile("testdata/issue652/nested/schema.yml")
 		require.NoError(t, err)
-		require.Contains(t, spec.Components.Schemas, schemaName)
+		_, hasSchema := spec.Components.Schemas.Get(schemaName)
+		require.True(t, hasSchema)
 
-		schema := spec.Components.Schemas[schemaName]
+		schema := spec.Components.Schemas.Value(schemaName)
 		assert.Equal(t, "../definitions.yml#/components/schemas/TestSchema", schema.Ref)
 		assert.Equal(t, &openapi3.Types{"string"}, schema.Value.Type)
 	})

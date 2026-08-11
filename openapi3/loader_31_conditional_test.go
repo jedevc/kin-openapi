@@ -17,7 +17,7 @@ func TestResolveConditionalSchemaRefs(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify if/then/else refs are resolved
-	conditional := doc.Components.Schemas["ConditionalField"].Value
+	conditional := doc.Components.Schemas.Value("ConditionalField").Value
 	require.NotNil(t, conditional.If)
 	require.NotNil(t, conditional.If.Value)
 	require.True(t, conditional.If.Value.Type.Is("string"))
@@ -31,7 +31,7 @@ func TestResolveConditionalSchemaRefs(t *testing.T) {
 	require.True(t, conditional.Else.Value.Type.Is("number"))
 
 	// Verify dependentRequired is loaded
-	payment := doc.Components.Schemas["PaymentInfo"].Value
+	payment := doc.Components.Schemas.Value("PaymentInfo").Value
 	require.Equal(t, map[string][]string{
 		"creditCard": {"billingAddress"},
 	}, payment.DependentRequired)

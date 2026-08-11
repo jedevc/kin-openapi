@@ -259,6 +259,37 @@ func spec() *openapi3.T {
 		Description: "Some schema",
 	}
 	example := map[string]string{"name": "Some example"}
+	parameters := openapi3.ParametersMapFromMap(map[string]*openapi3.ParameterRef{
+		"someParameter": {Value: parameter},
+	})
+	requestBodies := openapi3.RequestBodiesFromMap(map[string]*openapi3.RequestBodyRef{
+		"someRequestBody": {Value: requestBody},
+	})
+	responses := openapi3.ResponseBodiesFromMap(map[string]*openapi3.ResponseRef{
+		"someResponse": {Value: response},
+	})
+	schemas := openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+		"someSchema": {Value: schema},
+	})
+	headers := openapi3.HeadersFromMap(map[string]*openapi3.HeaderRef{
+		"someHeader":  {Ref: "#/components/headers/otherHeader"},
+		"otherHeader": {Value: &openapi3.Header{openapi3.Parameter{Schema: &openapi3.SchemaRef{Value: openapi3.NewStringSchema()}}}},
+	})
+	examples := openapi3.ExamplesFromMap(map[string]*openapi3.ExampleRef{
+		"someExample":  {Ref: "#/components/examples/otherExample"},
+		"otherExample": {Value: openapi3.NewExample(example)},
+	})
+	securitySchemes := openapi3.SecuritySchemesFromMap(map[string]*openapi3.SecuritySchemeRef{
+		"someSecurityScheme": {Ref: "#/components/securitySchemes/otherSecurityScheme"},
+		"otherSecurityScheme": {
+			Value: &openapi3.SecurityScheme{
+				Description: "Some security scheme",
+				Type:        "apiKey",
+				In:          "query",
+				Name:        "token",
+			},
+		},
+	})
 	return &openapi3.T{
 		OpenAPI: "3.0",
 		Info: &openapi3.Info{
@@ -294,37 +325,13 @@ func spec() *openapi3.T {
 			}),
 		),
 		Components: &openapi3.Components{
-			Parameters: openapi3.ParametersMap{
-				"someParameter": {Value: parameter},
-			},
-			RequestBodies: openapi3.RequestBodies{
-				"someRequestBody": {Value: requestBody},
-			},
-			Responses: openapi3.ResponseBodies{
-				"someResponse": {Value: response},
-			},
-			Schemas: openapi3.Schemas{
-				"someSchema": {Value: schema},
-			},
-			Headers: openapi3.Headers{
-				"someHeader":  {Ref: "#/components/headers/otherHeader"},
-				"otherHeader": {Value: &openapi3.Header{openapi3.Parameter{Schema: &openapi3.SchemaRef{Value: openapi3.NewStringSchema()}}}},
-			},
-			Examples: openapi3.Examples{
-				"someExample":  {Ref: "#/components/examples/otherExample"},
-				"otherExample": {Value: openapi3.NewExample(example)},
-			},
-			SecuritySchemes: openapi3.SecuritySchemes{
-				"someSecurityScheme": {Ref: "#/components/securitySchemes/otherSecurityScheme"},
-				"otherSecurityScheme": {
-					Value: &openapi3.SecurityScheme{
-						Description: "Some security scheme",
-						Type:        "apiKey",
-						In:          "query",
-						Name:        "token",
-					},
-				},
-			},
+			Parameters:      &parameters,
+			RequestBodies:   &requestBodies,
+			Responses:       &responses,
+			Schemas:         &schemas,
+			Headers:         &headers,
+			Examples:        &examples,
+			SecuritySchemes: &securitySchemes,
 		},
 	}
 }

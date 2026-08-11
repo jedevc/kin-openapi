@@ -179,12 +179,12 @@ func defaultContentParameterDecoder(param *openapi3.Parameter, values []string) 
 	}
 
 	content := param.Content
-	if content == nil {
+	if content.Len() == 0 {
 		err = fmt.Errorf("parameter %q expected to have content", param.Name)
 		return
 	}
 	// We only know how to decode a parameter if it has one content, application/json
-	if len(content) != 1 {
+	if content.Len() != 1 {
 		err = fmt.Errorf("multiple content types for parameter %q", param.Name)
 		return
 	}
@@ -741,7 +741,7 @@ func (d *urlValuesDecoder) DecodeObject(param string, sm *openapi3.Serialization
 	}
 
 	found := sm.Style == "deepObject" && len(props) > 0 && decodesAdditionalProperties(schema.Value)
-	for propName := range schema.Value.Properties {
+	for propName := range schema.Value.Properties.Iter() {
 		if _, ok := props[propName]; ok {
 			found = true
 			break
@@ -1059,7 +1059,7 @@ func buildResObj(params map[string]any, parentKeys []string, key string, schema 
 			// not the expected type, but return it either way and leave validation up to ValidateParameter
 			return pp, nil
 		}
-		for k, propSchema := range schema.Value.Properties {
+		for k, propSchema := range schema.Value.Properties.Iter() {
 			r, err := buildResObj(params, mapKeys, k, propSchema)
 			if err != nil {
 				return nil, err
@@ -1451,13 +1451,13 @@ func UrlencodedBodyDecoder(body io.Reader, header http.Header, schema *openapi3.
 	if !schema.Value.Type.Is("object") {
 		return nil, errors.New("unsupported schema of request body")
 	}
-	propNames := make([]string, 0, len(schema.Value.Properties))
-	for name := range schema.Value.Properties {
+	propNames := make([]string, 0, schema.Value.Properties.Len())
+	for name := range schema.Value.Properties.Iter() {
 		propNames = append(propNames, name)
 	}
 	slices.Sort(propNames)
 	for _, propName := range propNames {
-		propSchema := schema.Value.Properties[propName]
+		propSchema := schema.Value.Properties.Value(propName)
 		propType := propSchema.Value.Type
 		switch {
 		case propType.Is("object"):
@@ -1510,13 +1510,13 @@ func decodeSchemaConstructs(dec *urlValuesDecoder, schemas []*openapi3.SchemaRef
 			return err
 		}
 
-		propNames := make([]string, 0, len(schemaRef.Value.Properties))
-		for name := range schemaRef.Value.Properties {
+		propNames := make([]string, 0, schemaRef.Value.Properties.Len())
+		for name := range schemaRef.Value.Properties.Iter() {
 			propNames = append(propNames, name)
 		}
 		slices.Sort(propNames)
 		for _, name := range propNames {
-			prop := schemaRef.Value.Properties[name]
+			prop := schemaRef.Value.Properties.Value(name)
 			value, present, err := decodeProperty(dec, name, prop, encFn)
 			if err != nil || !present {
 				continue
@@ -1579,7 +1579,7 @@ func MultipartBodyDecoder(body io.Reader, header http.Header, schema *openapi3.S
 		if len(schema.Value.AllOf) > 0 {
 			var exists bool
 			for _, sr := range schema.Value.AllOf {
-				if valueSchema, exists = sr.Value.Properties[name]; exists {
+				if valueSchema, exists = sr.Value.Properties.Get(name); exists {
 					break
 				}
 			}
@@ -1590,7 +1590,7 @@ func MultipartBodyDecoder(body io.Reader, header http.Header, schema *openapi3.S
 			// If the property's schema has type "array" it is means that the form contains a few parts with the same name.
 			// Every such part has a type that is defined by an items schema in the property's schema.
 			var exists bool
-			if valueSchema, exists = schema.Value.Properties[name]; !exists {
+			if valueSchema, exists = schema.Value.Properties.Get(name); !exists {
 				if anyProperties := schema.Value.AdditionalProperties.Has; anyProperties != nil {
 					switch *anyProperties {
 					case true:
@@ -1604,7 +1604,7 @@ func MultipartBodyDecoder(body io.Reader, header http.Header, schema *openapi3.S
 				if schema.Value.AdditionalProperties.Schema == nil {
 					return nil, &ParseError{Kind: KindOther, Cause: fmt.Errorf("part %s: undefined", name)}
 				}
-				if valueSchema, exists = schema.Value.AdditionalProperties.Schema.Value.Properties[name]; !exists {
+				if valueSchema, exists = schema.Value.AdditionalProperties.Schema.Value.Properties.Get(name); !exists {
 					return nil, &ParseError{Kind: KindOther, Cause: fmt.Errorf("part %s: undefined", name)}
 				}
 			}
@@ -1641,15 +1641,15 @@ func MultipartBodyDecoder(body io.Reader, header http.Header, schema *openapi3.S
 	allTheProperties := make(map[string]*openapi3.SchemaRef)
 	if len(schema.Value.AllOf) > 0 {
 		for _, sr := range schema.Value.AllOf {
-			maps.Copy(allTheProperties, sr.Value.Properties)
+			maps.Copy(allTheProperties, sr.Value.Properties.Map())
 			if addProps := sr.Value.AdditionalProperties.Schema; addProps != nil {
-				maps.Copy(allTheProperties, addProps.Value.Properties)
+				maps.Copy(allTheProperties, addProps.Value.Properties.Map())
 			}
 		}
 	} else {
-		maps.Copy(allTheProperties, schema.Value.Properties)
+		maps.Copy(allTheProperties, schema.Value.Properties.Map())
 		if addProps := schema.Value.AdditionalProperties.Schema; addProps != nil {
-			maps.Copy(allTheProperties, addProps.Value.Properties)
+			maps.Copy(allTheProperties, addProps.Value.Properties.Map())
 		}
 	}
 

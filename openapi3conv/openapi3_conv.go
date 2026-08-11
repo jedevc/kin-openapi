@@ -93,38 +93,38 @@ func (w *walker) logf(format string, args ...any) {
 // walkDoc visits every Schema reachable from the document root.
 func (w *walker) walkDoc(doc *openapi3.T) {
 	if doc.Components != nil {
-		for _, sr := range doc.Components.Schemas {
+		for _, sr := range doc.Components.Schemas.Iter() {
 			w.walkSchemaRef(sr)
 		}
-		for _, pr := range doc.Components.Parameters {
+		for _, pr := range doc.Components.Parameters.Iter() {
 			if pr != nil && pr.Value != nil {
 				w.walkSchemaRef(pr.Value.Schema)
-				for _, mt := range pr.Value.Content {
+				for _, mt := range pr.Value.Content.Iter() {
 					w.walkMediaType(mt)
 				}
 			}
 		}
-		for _, hr := range doc.Components.Headers {
+		for _, hr := range doc.Components.Headers.Iter() {
 			if hr != nil && hr.Value != nil {
 				w.walkSchemaRef(hr.Value.Schema)
-				for _, mt := range hr.Value.Content {
+				for _, mt := range hr.Value.Content.Iter() {
 					w.walkMediaType(mt)
 				}
 			}
 		}
-		for _, rb := range doc.Components.RequestBodies {
+		for _, rb := range doc.Components.RequestBodies.Iter() {
 			if rb != nil && rb.Value != nil {
-				for _, mt := range rb.Value.Content {
+				for _, mt := range rb.Value.Content.Iter() {
 					w.walkMediaType(mt)
 				}
 			}
 		}
-		for _, rr := range doc.Components.Responses {
+		for _, rr := range doc.Components.Responses.Iter() {
 			if rr != nil && rr.Value != nil {
-				for _, mt := range rr.Value.Content {
+				for _, mt := range rr.Value.Content.Iter() {
 					w.walkMediaType(mt)
 				}
-				for _, hr := range rr.Value.Headers {
+				for _, hr := range rr.Value.Headers.Iter() {
 					if hr != nil && hr.Value != nil {
 						w.walkSchemaRef(hr.Value.Schema)
 					}
@@ -133,11 +133,11 @@ func (w *walker) walkDoc(doc *openapi3.T) {
 		}
 	}
 
-	for _, pathItem := range doc.Paths.Map() {
+	for _, pathItem := range doc.Paths.Iter() {
 		w.walkPathItem(pathItem)
 	}
 
-	for _, pathItem := range doc.Webhooks {
+	for _, pathItem := range doc.Webhooks.Iter() {
 		w.walkPathItem(pathItem)
 	}
 }
@@ -163,36 +163,36 @@ func (w *walker) walkOperation(op *openapi3.Operation) {
 	for _, pr := range op.Parameters {
 		if pr != nil && pr.Value != nil {
 			w.walkSchemaRef(pr.Value.Schema)
-			for _, mt := range pr.Value.Content {
+			for _, mt := range pr.Value.Content.Iter() {
 				w.walkMediaType(mt)
 			}
 		}
 	}
 	if op.RequestBody != nil && op.RequestBody.Value != nil {
-		for _, mt := range op.RequestBody.Value.Content {
+		for _, mt := range op.RequestBody.Value.Content.Iter() {
 			w.walkMediaType(mt)
 		}
 	}
 	if op.Responses != nil {
-		for _, rr := range op.Responses.Map() {
+		for _, rr := range op.Responses.Iter() {
 			if rr == nil || rr.Value == nil {
 				continue
 			}
-			for _, mt := range rr.Value.Content {
+			for _, mt := range rr.Value.Content.Iter() {
 				w.walkMediaType(mt)
 			}
-			for _, hr := range rr.Value.Headers {
+			for _, hr := range rr.Value.Headers.Iter() {
 				if hr != nil && hr.Value != nil {
 					w.walkSchemaRef(hr.Value.Schema)
 				}
 			}
 		}
 	}
-	for _, cb := range op.Callbacks {
+	for _, cb := range op.Callbacks.Iter() {
 		if cb == nil || cb.Value == nil {
 			continue
 		}
-		for _, pathItem := range cb.Value.Map() {
+		for _, pathItem := range cb.Value.Iter() {
 			w.walkPathItem(pathItem)
 		}
 	}
@@ -228,7 +228,7 @@ func (w *walker) walkSchema(s *openapi3.Schema) {
 	w.rewriteExample(s)
 
 	// Recurse into every child schema.
-	for _, sub := range s.Properties {
+	for _, sub := range s.Properties.Iter() {
 		w.walkSchemaRef(sub)
 	}
 	w.walkSchemaRef(s.Items)
@@ -245,7 +245,7 @@ func (w *walker) walkSchema(s *openapi3.Schema) {
 		w.walkSchemaRef(sub)
 	}
 	w.walkSchemaRef(s.Not)
-	for _, sub := range s.PatternProperties {
+	for _, sub := range s.PatternProperties.Iter() {
 		w.walkSchemaRef(sub)
 	}
 }

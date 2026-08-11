@@ -81,14 +81,14 @@ components:
 	expected, err := json.Marshal(&Schema{
 		Type:     &Types{"object"},
 		Required: []string{"id", "uri"},
-		Properties: Schemas{
+		Properties: SchemasFromMap(map[string]*SchemaRef{
 			"id":  {Value: &Schema{Type: &Types{"string"}}},
 			"uri": {Value: &Schema{Type: &Types{"string"}}},
-		},
+		}),
 	},
 	)
 	require.NoError(t, err)
-	got, err := json.Marshal(doc.Components.Schemas["AvailableProduct"].Value.Properties["media"].Value.Properties["documents"].Value.Items.Value.AllOf[0].Value)
+	got, err := json.Marshal(doc.Components.Schemas.Value("AvailableProduct").Value.Properties.Value("media").Value.Properties.Value("documents").Value.Items.Value.AllOf[0].Value)
 	require.NoError(t, err)
 
 	require.Equal(t, expected, got)

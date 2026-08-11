@@ -32,11 +32,11 @@ func Example() {
 	fmt.Println(doc.
 		Paths.Value("/foo").
 		Get.Responses.Value("200").Value.
-		Content["application/json"].
+		Content.Value("application/json").
 		Schema.Value.
-		Properties["foo2"].Value.
-		Properties["foo"].Value.
-		Properties["bar"].Value.
+		Properties.Value("foo2").Value.
+		Properties.Value("foo").Value.
+		Properties.Value("bar").Value.
 		Type,
 	)
 	// Output: &[string]

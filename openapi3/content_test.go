@@ -11,16 +11,16 @@ func TestContent_Get(t *testing.T) {
 	wildcard := NewMediaType()
 	stripped := NewMediaType()
 	fullMatch := NewMediaType()
-	content := Content{
+	content := ContentFromMap(map[string]*MediaType{
 		"*/*":                             fallback,
 		"application/*":                   wildcard,
 		"application/json":                stripped,
 		"application/json;encoding=utf-8": fullMatch,
-	}
-	contentWithoutWildcards := Content{
+	})
+	contentWithoutWildcards := ContentFromMap(map[string]*MediaType{
 		"application/json":                stripped,
 		"application/json;encoding=utf-8": fullMatch,
-	}
+	})
 	tests := []struct {
 		name    string
 		content Content

@@ -77,11 +77,11 @@ func TestSchemaIfThenElse_JSONSchema2020(t *testing.T) {
 	t.Run("dependentRequired validation", func(t *testing.T) {
 		schema := &openapi3.Schema{
 			Type: &openapi3.Types{"object"},
-			Properties: openapi3.Schemas{
-				"name":           &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{"string"}}},
-				"creditCard":     &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{"string"}}},
-				"billingAddress": &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{"string"}}},
-			},
+			Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+				"name":           {Value: &openapi3.Schema{Type: &openapi3.Types{"string"}}},
+				"creditCard":     {Value: &openapi3.Schema{Type: &openapi3.Types{"string"}}},
+				"billingAddress": {Value: &openapi3.Schema{Type: &openapi3.Types{"string"}}},
+			}),
 			DependentRequired: map[string][]string{
 				"creditCard": {"billingAddress"},
 			},

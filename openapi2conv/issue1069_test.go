@@ -88,7 +88,7 @@ paths:
             $ref: '#/definitions/TestSchema'
 `,
 			validate: func(t *testing.T, v3 *openapi3.T) {
-				schema := v3.Components.Schemas["TestSchema"].Value
+				schema := v3.Components.Schemas.Value("TestSchema").Value
 				require.NotNil(t, schema.ExternalDocs)
 				assert.Equal(t, "https://example/schema", schema.ExternalDocs.URL)
 				assert.Equal(t, "Schema level documentation", schema.ExternalDocs.Description)

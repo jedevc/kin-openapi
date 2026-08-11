@@ -184,7 +184,7 @@ securityDefinitions:
 `
 	doc3, err := v2v3YAML([]byte(spec))
 	require.NoError(t, err)
-	require.NotNil(t, doc3.Components.SecuritySchemes["OAuth2Application"].Value.Flows.ClientCredentials)
+	require.NotNil(t, doc3.Components.SecuritySchemes.Value("OAuth2Application").Value.Flows.ClientCredentials)
 	_, err = yaml.Marshal(doc3)
 	require.NoError(t, err)
 

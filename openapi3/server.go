@@ -66,8 +66,8 @@ func (server *Server) BasePath() (string, error) {
 	}
 
 	uri := server.URL
-	for _, name := range componentNames(server.Variables) {
-		uri = strings.ReplaceAll(uri, "{"+name+"}", server.Variables[name].Default)
+	for name, v := range server.Variables.Iter() {
+		uri = strings.ReplaceAll(uri, "{"+name+"}", v.Default)
 	}
 
 	u, err := url.ParseRequestURI(uri)
@@ -99,7 +99,7 @@ func (server Server) MarshalYAML() (any, error) {
 	if x := server.Description; x != "" {
 		m["description"] = x
 	}
-	if x := server.Variables; len(x) != 0 {
+	if x := server.Variables; x.Len() != 0 {
 		m["variables"] = x
 	}
 	return m, nil
@@ -212,14 +212,13 @@ func (server *Server) Validate(ctx context.Context, opts ...ValidationOption) er
 		}
 	}
 
-	if opening != len(server.Variables) {
+	if opening != server.Variables.Len() {
 		if err := me.emit(newServerURLUndeclaredVariables(server.URL, server.Origin)); err != nil {
 			return err
 		}
 	}
 
-	for _, name := range componentNames(server.Variables) {
-		v := server.Variables[name]
+	for name, v := range server.Variables.Iter() {
 		if !strings.Contains(server.URL, "{"+name+"}") {
 			if err := me.emit(newServerURLUndeclaredVariables(server.URL, server.Origin)); err != nil {
 				return err
@@ -240,9 +239,6 @@ func (server *Server) Validate(ctx context.Context, opts ...ValidationOption) er
 
 // ServerVariable is specified by OpenAPI/Swagger standard version 3.
 // See https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.3.md#server-variable-object
-// ServerVariables is a map of ServerVariable objects keyed by variable name.
-type ServerVariables map[string]*ServerVariable
-
 type ServerVariable struct {
 	Extensions map[string]any `json:"-" yaml:"-"`
 	Origin     *Origin        `json:"-" yaml:"-"`

@@ -4,12 +4,9 @@ import (
 	"fmt"
 	"net/url"
 	"path"
-	"reflect"
 	"regexp"
 	"slices"
 	"strings"
-
-	"github.com/go-openapi/jsonpointer"
 )
 
 const identifierChars = `a-zA-Z0-9._-`
@@ -205,40 +202,16 @@ func ReferencesComponentInRootDocument(doc *T, ref ComponentRef) (string, bool) 
 		return "", false
 	}
 
-	collection, _, err := jsonpointer.GetForToken(doc.Components, ref.CollectionName())
-	if err != nil {
-		panic(err) // unreachable
-	}
-
-	var components map[string]ComponentRef
-
-	componentRefType := reflect.TypeFor[ComponentRef]()
-	if t := reflect.TypeOf(collection); t.Kind() == reflect.Map &&
-		t.Key().Kind() == reflect.String &&
-		t.Elem().AssignableTo(componentRefType) {
-		v := reflect.ValueOf(collection)
-
-		components = make(map[string]ComponentRef, v.Len())
-		for _, key := range v.MapKeys() {
-			strct := v.MapIndex(key)
-			// Type assertion safe, already checked via reflection above.
-			components[key.Interface().(string)] = strct.Interface().(ComponentRef)
-		}
-	} else {
-		return "", false
-	}
-
 	// Case 2:
 	// Something like: ../openapi.yaml#/components/schemas/myElement
-	for _, name := range componentNames(components) {
-		s := components[name]
+	for name, component := range doc.Components.refsForCollection(ref.CollectionName()) {
 		// Must be a reference to a YAML file.
-		if !isWholeDocumentReference(s.RefString()) {
+		if !isWholeDocumentReference(component.RefString()) {
 			continue
 		}
 
 		// Is the schema a ref to the same resource.
-		if !refersToSameDocument(s, ref) {
+		if !refersToSameDocument(component, ref) {
 			continue
 		}
 

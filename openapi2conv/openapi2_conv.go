@@ -52,23 +52,23 @@ func ToV3WithLoader(doc2 *openapi2.T, loader *openapi3.Loader, location *url.URL
 		}
 	}
 
-	doc3.Components.Schemas = make(map[string]*openapi3.SchemaRef)
+	doc3.Components.Schemas = openapi3.NewSchemas()
 	if parameters := doc2.Parameters; len(parameters) != 0 {
-		doc3.Components.Parameters = make(map[string]*openapi3.ParameterRef)
-		doc3.Components.RequestBodies = make(map[string]*openapi3.RequestBodyRef)
+		doc3.Components.Parameters = openapi3.NewParametersMap()
+		doc3.Components.RequestBodies = openapi3.NewRequestBodies()
 		for k, parameter := range parameters {
 			v3Parameter, v3RequestBody, v3SchemaMap, err := ToV3Parameter(doc3.Components, parameter, doc2.Consumes)
 			switch {
 			case err != nil:
 				return nil, err
 			case v3RequestBody != nil:
-				doc3.Components.RequestBodies[k] = v3RequestBody
+				doc3.Components.RequestBodies.Set(k, v3RequestBody)
 			case v3SchemaMap != nil:
 				for _, v3Schema := range v3SchemaMap {
-					doc3.Components.Schemas[k] = v3Schema
+					doc3.Components.Schemas.Set(k, v3Schema)
 				}
 			default:
-				doc3.Components.Parameters[k] = v3Parameter
+				doc3.Components.Parameters.Set(k, v3Parameter)
 			}
 		}
 	}
@@ -85,26 +85,28 @@ func ToV3WithLoader(doc2 *openapi2.T, loader *openapi3.Loader, location *url.URL
 	}
 
 	if responses := doc2.Responses; len(responses) != 0 {
-		doc3.Components.Responses = make(openapi3.ResponseBodies, len(responses))
+		doc3.Components.Responses = openapi3.NewResponseBodiesWithCapacity(len(responses))
 		for k, response := range responses {
 			r, err := ToV3Response(response, doc2.Produces)
 			if err != nil {
 				return nil, err
 			}
-			doc3.Components.Responses[k] = r
+			doc3.Components.Responses.Set(k, r)
 		}
 	}
 
-	maps.Copy(doc3.Components.Schemas, ToV3Schemas(doc2.Definitions))
+	for key, schema := range ToV3Schemas(doc2.Definitions) {
+		doc3.Components.Schemas.Set(key, schema)
+	}
 
 	if m := doc2.SecurityDefinitions; len(m) != 0 {
-		doc3SecuritySchemes := make(map[string]*openapi3.SecuritySchemeRef)
+		doc3SecuritySchemes := openapi3.NewSecuritySchemes()
 		for k, v := range m {
 			r, err := ToV3SecurityScheme(v)
 			if err != nil {
 				return nil, err
 			}
-			doc3SecuritySchemes[k] = r
+			doc3SecuritySchemes.Set(k, r)
 		}
 		doc3.Components.SecuritySchemes = doc3SecuritySchemes
 	}
@@ -211,10 +213,10 @@ func ToV3Parameter(components *openapi3.Components, parameter *openapi2.Paramete
 	if ref := parameter.Ref; ref != "" {
 		if strings.HasPrefix(ref, "#/parameters/") {
 			name := getParameterNameFromOldRef(ref)
-			if _, ok := components.RequestBodies[name]; ok {
+			if _, ok := components.RequestBodies.Get(name); ok {
 				v3Ref := strings.Replace(ref, "#/parameters/", "#/components/requestBodies/", 1)
 				return nil, &openapi3.RequestBodyRef{Ref: v3Ref}, nil, nil
-			} else if schema, ok := components.Schemas[name]; ok {
+			} else if schema, ok := components.Schemas.Get(name); ok {
 				schemaRefMap := make(map[string]*openapi3.SchemaRef)
 				if val, ok := schema.Value.Extensions["x-formData-name"]; ok {
 					name = val.(string)
@@ -350,9 +352,13 @@ func formDataBody(bodies map[string]*openapi3.SchemaRef, reqs map[string]bool, c
 		}
 	}
 	slices.Sort(requireds)
+	props := openapi3.NewSchemas()
+	for k, v := range bodies {
+		props.Set(k, v)
+	}
 	schema := &openapi3.Schema{
 		Type:       &openapi3.Types{"object"},
-		Properties: bodies,
+		Properties: *props,
 		Required:   requireds,
 	}
 	return &openapi3.RequestBodyRef{
@@ -386,7 +392,7 @@ func onlyOneReqBodyParam(bodies []*openapi3.RequestBodyRef, formDataSchemas map[
 		for formDataName, formDataSchema := range formDataSchemas {
 			if formDataSchema.Ref != "" {
 				name := getParameterNameFromNewRef(formDataSchema.Ref)
-				if schema := components.Schemas[name]; schema != nil && schema.Value != nil {
+				if schema := components.Schemas.Value(name); schema != nil && schema.Value != nil {
 					if tempName, ok := schema.Value.Extensions["x-formData-name"]; ok {
 						name = tempName.(string)
 					}
@@ -431,9 +437,9 @@ func ToV3Response(response *openapi2.Response, produces []string) (*openapi3.Res
 
 	if schemaRef := response.Schema; schemaRef != nil {
 		schema := ToV3SchemaRef(schemaRef)
-		result.Content = make(openapi3.Content, len(produces))
+		result.Content = openapi3.NewContentWithCapacity(len(produces))
 		for _, mime := range produces {
-			result.Content[mime] = openapi3.NewMediaType().WithSchemaRef(schema)
+			result.Content.Set(mime, openapi3.NewMediaType().WithSchemaRef(schema))
 		}
 	}
 	if headers := response.Headers; len(headers) > 0 {
@@ -443,17 +449,17 @@ func ToV3Response(response *openapi2.Response, produces []string) (*openapi3.Res
 }
 
 func ToV3Headers(defs map[string]*openapi2.Header) openapi3.Headers {
-	headers := make(openapi3.Headers, len(defs))
+	headers := *openapi3.NewHeadersWithCapacity(len(defs))
 	for name, header := range defs {
 		header.In = ""
 		header.Name = ""
 		if ref := header.Ref; ref != "" {
-			headers[name] = &openapi3.HeaderRef{Ref: ToV3Ref(ref)}
+			headers.Set(name, &openapi3.HeaderRef{Ref: ToV3Ref(ref)})
 		} else {
 			parameter, _, _, _ := ToV3Parameter(nil, &header.Parameter, nil)
-			headers[name] = &openapi3.HeaderRef{Value: &openapi3.Header{
+			headers.Set(name, &openapi3.HeaderRef{Value: &openapi3.Header{
 				Parameter: *parameter.Value,
-			}}
+			}})
 		}
 	}
 	return headers
@@ -512,7 +518,7 @@ func ToV3SchemaRef(schema *openapi2.SchemaRef) *openapi3.SchemaRef {
 		MinProps:             schema.Value.MinProps,
 		MaxProps:             schema.Value.MaxProps,
 		AllOf:                make(openapi3.SchemaRefs, len(schema.Value.AllOf)),
-		Properties:           make(openapi3.Schemas),
+		Properties:           *openapi3.NewSchemas(),
 		AdditionalProperties: toV3AdditionalProperties(schema.Value.AdditionalProperties),
 	}
 
@@ -529,7 +535,7 @@ func ToV3SchemaRef(schema *openapi2.SchemaRef) *openapi3.SchemaRef {
 		v3Schema.Format, v3Schema.Type = "binary", &openapi3.Types{"string"}
 	}
 	for k, v := range schema.Value.Properties {
-		v3Schema.Properties[k] = ToV3SchemaRef(v)
+		v3Schema.Properties.Set(k, ToV3SchemaRef(v))
 	}
 	for i, v := range schema.Value.AllOf {
 		v3Schema.AllOf[i] = ToV3SchemaRef(v)
@@ -664,11 +670,11 @@ func ToV3SecurityScheme(securityScheme *openapi2.SecurityScheme) (*openapi3.Secu
 
 // FromV3 converts an OpenAPIv3 spec to an OpenAPIv2 spec
 func FromV3(doc3 *openapi3.T) (*openapi2.T, error) {
-	doc2Responses, err := FromV3Responses(doc3.Components.Responses, doc3.Components)
+	doc2Responses, err := FromV3Responses(doc3.Components.Responses.Map(), doc3.Components)
 	if err != nil {
 		return nil, err
 	}
-	schemas, parameters := FromV3Schemas(doc3.Components.Schemas, doc3.Components)
+	schemas, parameters := FromV3Schemas(doc3.Components.Schemas.Map(), doc3.Components)
 	doc2 := &openapi2.T{
 		Swagger:      "2.0",
 		Info:         *doc3.Info,
@@ -737,13 +743,13 @@ func FromV3(doc3 *openapi3.T) (*openapi2.T, error) {
 		doc2.Paths[path].Parameters = params
 	}
 
-	for name, param := range doc3.Components.Parameters {
+	for name, param := range doc3.Components.Parameters.Iter() {
 		if doc2.Parameters[name], err = FromV3Parameter(param, doc3.Components); err != nil {
 			return nil, err
 		}
 	}
 
-	for name, requestBodyRef := range doc3.Components.RequestBodies {
+	for name, requestBodyRef := range doc3.Components.RequestBodies.Iter() {
 		bodyOrRefParameters, formDataParameters, consumes, err := fromV3RequestBodies(name, requestBodyRef, doc3.Components)
 		if err != nil {
 			return nil, err
@@ -763,9 +769,9 @@ func FromV3(doc3 *openapi3.T) (*openapi2.T, error) {
 		}
 	}
 
-	if m := doc3.Components.SecuritySchemes; m != nil {
+	if m := doc3.Components.SecuritySchemes; m.Len() != 0 {
 		doc2SecuritySchemes := make(map[string]*openapi2.SecurityScheme)
-		for id, securityScheme := range m {
+		for id, securityScheme := range m.Iter() {
 			v, err := FromV3SecurityScheme(securityScheme)
 			if err != nil {
 				return nil, err
@@ -801,7 +807,7 @@ func fromV3RequestBodies(name string, requestBodyRef *openapi3.RequestBodyRef, c
 
 	// Only select one formData or request body for an individual requestBody as OpenAPI 2 does not support multiples
 	if requestBodyRef.Value != nil {
-		for contentType, mediaType := range requestBodyRef.Value.Content {
+		for contentType, mediaType := range requestBodyRef.Value.Content.Iter() {
 			if consumes == nil {
 				consumes = make(map[string]struct{})
 			}
@@ -856,7 +862,7 @@ func FromV3SchemaRef(schema *openapi3.SchemaRef, components *openapi3.Components
 		// schema is not known locally': emit a plain $ref and move on.
 		name := getParameterNameFromNewRef(ref)
 		if components != nil {
-			if val, ok := components.Schemas[name]; ok {
+			if val, ok := components.Schemas.Get(name); ok {
 				if val.Value.Format == "binary" {
 					v2Ref := strings.Replace(ref, "#/components/schemas/", "#/parameters/", 1)
 					return nil, &openapi2.Parameter{Ref: v2Ref}
@@ -942,13 +948,13 @@ func FromV3SchemaRef(schema *openapi3.SchemaRef, components *openapi3.Components
 		v2Schema.Items, _ = FromV3SchemaRef(v, components)
 	}
 
-	keys := make([]string, 0, len(schema.Value.Properties))
-	for k := range schema.Value.Properties {
+	keys := make([]string, 0, schema.Value.Properties.Len())
+	for k := range schema.Value.Properties.Iter() {
 		keys = append(keys, k)
 	}
 	slices.Sort(keys)
 	for _, key := range keys {
-		property, _ := FromV3SchemaRef(schema.Value.Properties[key], components)
+		property, _ := FromV3SchemaRef(schema.Value.Properties.Value(key), components)
 		if property != nil {
 			v2Schema.Properties[key] = property
 		}
@@ -1045,7 +1051,7 @@ nameSearch:
 
 func FromV3RequestBodyFormData(mediaType *openapi3.MediaType) openapi2.Parameters {
 	parameters := openapi2.Parameters{}
-	for propName, schemaRef := range mediaType.Schema.Value.Properties {
+	for propName, schemaRef := range mediaType.Schema.Value.Properties.Iter() {
 		if ref := schemaRef.Ref; ref != "" {
 			v2Ref := strings.Replace(ref, "#/components/schemas/", "#/parameters/", 1)
 			parameters = append(parameters, &openapi2.Parameter{Ref: v2Ref})
@@ -1243,12 +1249,12 @@ func FromV3Response(ref *openapi3.ResponseRef, components *openapi3.Components) 
 		Description: description,
 		Extensions:  stripNonExtensions(response.Extensions),
 	}
-	if content := response.Content; content != nil {
-		if ct := content["application/json"]; ct != nil {
+	if content := response.Content; content.Len() != 0 {
+		if ct := content.Value("application/json"); ct != nil {
 			result.Schema, _ = FromV3SchemaRef(ct.Schema, components)
 		}
 	}
-	if headers := response.Headers; len(headers) > 0 {
+	if headers := response.Headers; headers.Len() > 0 {
 		var err error
 		if result.Headers, err = FromV3Headers(headers, components); err != nil {
 			return nil, err
@@ -1258,8 +1264,8 @@ func FromV3Response(ref *openapi3.ResponseRef, components *openapi3.Components) 
 }
 
 func FromV3Headers(defs openapi3.Headers, components *openapi3.Components) (map[string]*openapi2.Header, error) {
-	headers := make(map[string]*openapi2.Header, len(defs))
-	for name, header := range defs {
+	headers := make(map[string]*openapi2.Header, defs.Len())
+	for name, header := range defs.Iter() {
 		ref := openapi3.ParameterRef{Ref: header.Ref, Value: &header.Value.Parameter}
 		parameter, err := FromV3Parameter(&ref, components)
 		if err != nil {

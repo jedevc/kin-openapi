@@ -177,9 +177,9 @@ func TestIssue735(t *testing.T) {
 		{
 			name: "required properties",
 			schema: &Schema{
-				Properties: Schemas{
+				Properties: SchemasFromMap(map[string]*SchemaRef{
 					"bar": NewStringSchema().NewRef(),
-				},
+				}),
 				Required: []string{"bar"},
 			},
 			value:            map[string]any{"foo": 42},

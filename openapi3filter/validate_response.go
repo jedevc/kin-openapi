@@ -77,15 +77,15 @@ func ValidateResponse(ctx context.Context, input *ResponseValidationInput) error
 		opts = append(opts, openapi3.EnableJSONSchema2020())
 	}
 
-	headers := make([]string, 0, len(response.Headers))
-	for k := range response.Headers {
+	headers := make([]string, 0, response.Headers.Len())
+	for k := range response.Headers.Iter() {
 		if k != headerCT {
 			headers = append(headers, k)
 		}
 	}
 	slices.Sort(headers)
 	for _, headerName := range headers {
-		headerRef := response.Headers[headerName]
+		headerRef := response.Headers.Value(headerName)
 		if err := validateResponseHeader(headerName, headerRef, input, opts); err != nil {
 			return err
 		}
@@ -97,7 +97,7 @@ func ValidateResponse(ctx context.Context, input *ResponseValidationInput) error
 	}
 
 	content := response.Content
-	if len(content) == 0 {
+	if content.Len() == 0 {
 		// An operation does not contains a validation schema for responses with this status code.
 		return nil
 	}
@@ -140,7 +140,7 @@ func ValidateResponse(ctx context.Context, input *ResponseValidationInput) error
 	// Put the data back into the response.
 	input.SetBodyBytes(data)
 
-	encFn := func(name string) *openapi3.Encoding { return contentType.Encoding[name] }
+	encFn := func(name string) *openapi3.Encoding { return contentType.Encoding.Value(name) }
 	_, value, err := decodeBody(bytes.NewBuffer(data), input.Header, contentType.Schema, encFn)
 	if err != nil {
 		return &ResponseError{

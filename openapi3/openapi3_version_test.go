@@ -18,7 +18,7 @@ func TestWebhooksField(t *testing.T) {
 				Version: "1.0.0",
 			},
 			Paths: openapi3.NewPaths(),
-			Webhooks: map[string]*openapi3.PathItem{
+			Webhooks: openapi3.WebhooksFromMap(map[string]*openapi3.PathItem{
 				"newPet": {
 					Post: &openapi3.Operation{
 						Summary: "New pet webhook",
@@ -31,7 +31,7 @@ func TestWebhooksField(t *testing.T) {
 						),
 					},
 				},
-			},
+			}),
 		}
 
 		data, err := json.Marshal(doc)
@@ -69,10 +69,10 @@ func TestWebhooksField(t *testing.T) {
 		require.NoError(t, err)
 
 		require.True(t, doc.IsOpenAPI31OrLater())
-		require.NotNil(t, doc.Webhooks)
-		require.Contains(t, doc.Webhooks, "newPet")
-		require.NotNil(t, doc.Webhooks["newPet"].Post)
-		require.Equal(t, "New pet webhook", doc.Webhooks["newPet"].Post.Summary)
+		require.NotZero(t, doc.Webhooks.Len())
+		require.NotNil(t, doc.Webhooks.Value("newPet"))
+		require.NotNil(t, doc.Webhooks.Value("newPet").Post)
+		require.Equal(t, "New pet webhook", doc.Webhooks.Value("newPet").Post.Summary)
 	})
 
 	t.Run("OpenAPI 3.0 without webhooks", func(t *testing.T) {
@@ -90,7 +90,7 @@ func TestWebhooksField(t *testing.T) {
 		require.NoError(t, err)
 
 		require.True(t, doc.IsOpenAPI30())
-		require.Nil(t, doc.Webhooks)
+		require.Zero(t, doc.Webhooks.Len())
 	})
 
 	t.Run("validate webhooks", func(t *testing.T) {
@@ -101,7 +101,7 @@ func TestWebhooksField(t *testing.T) {
 				Version: "1.0.0",
 			},
 			Paths: openapi3.NewPaths(),
-			Webhooks: map[string]*openapi3.PathItem{
+			Webhooks: openapi3.WebhooksFromMap(map[string]*openapi3.PathItem{
 				"validWebhook": {
 					Post: &openapi3.Operation{
 						Responses: openapi3.NewResponses(
@@ -113,7 +113,7 @@ func TestWebhooksField(t *testing.T) {
 						),
 					},
 				},
-			},
+			}),
 		}
 
 		// Should validate successfully
@@ -129,9 +129,9 @@ func TestWebhooksField(t *testing.T) {
 				Version: "1.0.0",
 			},
 			Paths: openapi3.NewPaths(),
-			Webhooks: map[string]*openapi3.PathItem{
+			Webhooks: openapi3.WebhooksFromMap(map[string]*openapi3.PathItem{
 				"invalidWebhook": nil,
-			},
+			}),
 		}
 
 		err := doc.Validate(t.Context())
@@ -149,22 +149,22 @@ func TestJSONLookupWithWebhooks(t *testing.T) {
 			Version: "1.0.0",
 		},
 		Paths: openapi3.NewPaths(),
-		Webhooks: map[string]*openapi3.PathItem{
+		Webhooks: openapi3.WebhooksFromMap(map[string]*openapi3.PathItem{
 			"test": {
 				Post: &openapi3.Operation{
 					Summary: "Test webhook",
 				},
 			},
-		},
+		}),
 	}
 
 	result, err := doc.JSONLookup("webhooks")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	webhooks, ok := result.(map[string]*openapi3.PathItem)
+	webhooks, ok := result.(openapi3.Webhooks)
 	require.True(t, ok)
-	require.Contains(t, webhooks, "test")
+	require.NotNil(t, webhooks.Value("test"))
 }
 
 func TestVersionBasedBehavior(t *testing.T) {
@@ -180,7 +180,7 @@ func TestVersionBasedBehavior(t *testing.T) {
 
 		if doc.IsOpenAPI30() {
 			// OpenAPI 3.0 specific logic
-			require.Nil(t, doc.Webhooks)
+			require.Zero(t, doc.Webhooks.Len())
 		}
 	})
 
@@ -192,7 +192,7 @@ func TestVersionBasedBehavior(t *testing.T) {
 				Version: "1.0.0",
 			},
 			Paths: openapi3.NewPaths(),
-			Webhooks: map[string]*openapi3.PathItem{
+			Webhooks: openapi3.WebhooksFromMap(map[string]*openapi3.PathItem{
 				"test": {
 					Post: &openapi3.Operation{
 						Summary: "Test",
@@ -205,13 +205,13 @@ func TestVersionBasedBehavior(t *testing.T) {
 						),
 					},
 				},
-			},
+			}),
 		}
 
 		if doc.IsOpenAPI31OrLater() {
 			// OpenAPI 3.1 specific logic
-			require.NotNil(t, doc.Webhooks)
-			require.Contains(t, doc.Webhooks, "test")
+			require.NotZero(t, doc.Webhooks.Len())
+			require.NotNil(t, doc.Webhooks.Value("test"))
 		}
 	})
 }
@@ -229,13 +229,13 @@ func TestMigrationScenario(t *testing.T) {
 		}
 
 		require.True(t, doc.IsOpenAPI30())
-		require.Nil(t, doc.Webhooks)
+		require.Zero(t, doc.Webhooks.Len())
 
 		// Upgrade to 3.1
 		doc.OpenAPI = "3.1.0"
 
 		// Add 3.1 features
-		doc.Webhooks = map[string]*openapi3.PathItem{
+		doc.Webhooks = openapi3.WebhooksFromMap(map[string]*openapi3.PathItem{
 			"newEvent": {
 				Post: &openapi3.Operation{
 					Summary: "New event notification",
@@ -248,10 +248,10 @@ func TestMigrationScenario(t *testing.T) {
 					),
 				},
 			},
-		}
+		})
 
 		require.True(t, doc.IsOpenAPI31OrLater())
-		require.NotNil(t, doc.Webhooks)
+		require.NotZero(t, doc.Webhooks.Len())
 
 		// Validate the upgraded document
 		err := doc.Validate(t.Context())

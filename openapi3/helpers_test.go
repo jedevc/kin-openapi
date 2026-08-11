@@ -15,17 +15,17 @@ func TestReferencesComponentInRootDocument(t *testing.T) {
 
 	runAssertions := func(doc *T) {
 		// The element type of ./records.yml references a document which is also in the root document.
-		v, ok := ReferencesComponentInRootDocument(doc, doc.Components.Schemas["BookRecords"].Value.Items)
+		v, ok := ReferencesComponentInRootDocument(doc, doc.Components.Schemas.Value("BookRecords").Value.Items)
 		assert.True(t, ok)
 		assert.Equal(t, "#/components/schemas/BookRecord", v)
 
 		// The array element type directly references the component in the root document.
-		v, ok = ReferencesComponentInRootDocument(doc, doc.Components.Schemas["CdRecords"].Value.Items)
+		v, ok = ReferencesComponentInRootDocument(doc, doc.Components.Schemas.Value("CdRecords").Value.Items)
 		assert.True(t, ok)
 		assert.Equal(t, "#/components/schemas/CdRecord", v)
 
 		// A component from the root document should
-		v, ok = ReferencesComponentInRootDocument(doc, doc.Components.Schemas["CdRecord"])
+		v, ok = ReferencesComponentInRootDocument(doc, doc.Components.Schemas.Value("CdRecord"))
 		assert.True(t, ok)
 		assert.Equal(t, "#/components/schemas/CdRecord", v)
 
@@ -43,17 +43,17 @@ func TestReferencesComponentInRootDocument(t *testing.T) {
 		assert.True(t, ok)
 		assert.Equal(t, "#/components/parameters/BookIDParameter", v)
 
-		v, ok = ReferencesComponentInRootDocument(doc, doc.Paths.Find("/record").Get.Responses.Value("200").Value.Content.Get("application/json").Examples["first-example"])
+		v, ok = ReferencesComponentInRootDocument(doc, doc.Paths.Find("/record").Get.Responses.Value("200").Value.Content.Get("application/json").Examples.Value("first-example"))
 		assert.True(t, ok)
 		assert.Equal(t, "#/components/examples/RecordResponseExample", v)
 
 		// Matches equivalent paths where string is no equal.
-		v, ok = ReferencesComponentInRootDocument(doc, doc.Paths.Find("/record").Get.Responses.Value("200").Value.Headers["X-Custom-Header"])
+		v, ok = ReferencesComponentInRootDocument(doc, doc.Paths.Find("/record").Get.Responses.Value("200").Value.Headers.Value("X-Custom-Header"))
 		assert.True(t, ok)
 		assert.Equal(t, "#/components/headers/CustomHeader", v)
 
 		// Same structure distinct definition of the same header
-		v, ok = ReferencesComponentInRootDocument(doc, doc.Paths.Find("/record").Get.Responses.Value("200").Value.Headers["X-Custom-Header2"])
+		v, ok = ReferencesComponentInRootDocument(doc, doc.Paths.Find("/record").Get.Responses.Value("200").Value.Headers.Value("X-Custom-Header2"))
 		assert.False(t, ok)
 		assert.Empty(t, v)
 	}

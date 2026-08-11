@@ -3,21 +3,9 @@ package openapi3
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"iter"
 	"maps"
-
-	"github.com/go-openapi/jsonpointer"
 )
-
-type Callbacks map[string]*CallbackRef             // Callbacks represents components' named callbacks
-type Examples map[string]*ExampleRef               // Examples represents components' named examples
-type Headers map[string]*HeaderRef                 // Headers represents components' named headers
-type Links map[string]*LinkRef                     // Links represents components' named links
-type ParametersMap map[string]*ParameterRef        // ParametersMap represents components' named parameters
-type RequestBodies map[string]*RequestBodyRef      // RequestBodies represents components' named request bodies
-type ResponseBodies map[string]*ResponseRef        // ResponseBodies represents components' named response bodies
-type Schemas map[string]*SchemaRef                 // Schemas represents components' named schemas
-type SecuritySchemes map[string]*SecuritySchemeRef // SecuritySchemes represents components' named security schemes
 
 // Components is specified by OpenAPI/Swagger standard version 3.
 // See https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.3.md#components-object
@@ -25,15 +13,15 @@ type Components struct {
 	Extensions map[string]any `json:"-" yaml:"-"`
 	Origin     *Origin        `json:"-" yaml:"-"`
 
-	Schemas         Schemas         `json:"schemas,omitempty" yaml:"schemas,omitempty"`
-	Parameters      ParametersMap   `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-	Headers         Headers         `json:"headers,omitempty" yaml:"headers,omitempty"`
-	RequestBodies   RequestBodies   `json:"requestBodies,omitempty" yaml:"requestBodies,omitempty"`
-	Responses       ResponseBodies  `json:"responses,omitempty" yaml:"responses,omitempty"`
-	SecuritySchemes SecuritySchemes `json:"securitySchemes,omitempty" yaml:"securitySchemes,omitempty"`
-	Examples        Examples        `json:"examples,omitempty" yaml:"examples,omitempty"`
-	Links           Links           `json:"links,omitempty" yaml:"links,omitempty"`
-	Callbacks       Callbacks       `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
+	Schemas         *Schemas         `json:"schemas,omitempty" yaml:"schemas,omitempty"`
+	Parameters      *ParametersMap   `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	Headers         *Headers         `json:"headers,omitempty" yaml:"headers,omitempty"`
+	RequestBodies   *RequestBodies   `json:"requestBodies,omitempty" yaml:"requestBodies,omitempty"`
+	Responses       *ResponseBodies  `json:"responses,omitempty" yaml:"responses,omitempty"`
+	SecuritySchemes *SecuritySchemes `json:"securitySchemes,omitempty" yaml:"securitySchemes,omitempty"`
+	Examples        *Examples        `json:"examples,omitempty" yaml:"examples,omitempty"`
+	Links           *Links           `json:"links,omitempty" yaml:"links,omitempty"`
+	Callbacks       *Callbacks       `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
 }
 
 func NewComponents() Components {
@@ -53,31 +41,31 @@ func (components Components) MarshalJSON() ([]byte, error) {
 func (components Components) MarshalYAML() (any, error) {
 	m := make(map[string]any, 9+len(components.Extensions))
 	maps.Copy(m, components.Extensions)
-	if x := components.Schemas; len(x) != 0 {
+	if x := components.Schemas; x.Len() != 0 {
 		m["schemas"] = x
 	}
-	if x := components.Parameters; len(x) != 0 {
+	if x := components.Parameters; x.Len() != 0 {
 		m["parameters"] = x
 	}
-	if x := components.Headers; len(x) != 0 {
+	if x := components.Headers; x.Len() != 0 {
 		m["headers"] = x
 	}
-	if x := components.RequestBodies; len(x) != 0 {
+	if x := components.RequestBodies; x.Len() != 0 {
 		m["requestBodies"] = x
 	}
-	if x := components.Responses; len(x) != 0 {
+	if x := components.Responses; x.Len() != 0 {
 		m["responses"] = x
 	}
-	if x := components.SecuritySchemes; len(x) != 0 {
+	if x := components.SecuritySchemes; x.Len() != 0 {
 		m["securitySchemes"] = x
 	}
-	if x := components.Examples; len(x) != 0 {
+	if x := components.Examples; x.Len() != 0 {
 		m["examples"] = x
 	}
-	if x := components.Links; len(x) != 0 {
+	if x := components.Links; x.Len() != 0 {
 		m["links"] = x
 	}
-	if x := components.Callbacks; len(x) != 0 {
+	if x := components.Callbacks; x.Len() != 0 {
 		m["callbacks"] = x
 	}
 	return m, nil
@@ -133,56 +121,56 @@ func (components *Components) Validate(ctx context.Context, opts ...ValidationOp
 		return nil
 	}
 
-	if err := validateMap("schema", componentNames(components.Schemas), func(k string) error {
-		return components.Schemas[k].Validate(ctx)
+	if err := validateMap("schema", components.Schemas.Keys(), func(k string) error {
+		return components.Schemas.Value(k).Validate(ctx)
 	}); err != nil {
 		return err
 	}
 
-	if err := validateMap("parameter", componentNames(components.Parameters), func(k string) error {
-		return components.Parameters[k].Validate(ctx)
+	if err := validateMap("parameter", components.Parameters.Keys(), func(k string) error {
+		return components.Parameters.Value(k).Validate(ctx)
 	}); err != nil {
 		return err
 	}
 
-	if err := validateMap("request body", componentNames(components.RequestBodies), func(k string) error {
-		return components.RequestBodies[k].Validate(ctx)
+	if err := validateMap("request body", components.RequestBodies.Keys(), func(k string) error {
+		return components.RequestBodies.Value(k).Validate(ctx)
 	}); err != nil {
 		return err
 	}
 
-	if err := validateMap("response", componentNames(components.Responses), func(k string) error {
-		return components.Responses[k].Validate(ctx)
+	if err := validateMap("response", components.Responses.Keys(), func(k string) error {
+		return components.Responses.Value(k).Validate(ctx)
 	}); err != nil {
 		return err
 	}
 
-	if err := validateMap("header", componentNames(components.Headers), func(k string) error {
-		return components.Headers[k].Validate(ctx)
+	if err := validateMap("header", components.Headers.Keys(), func(k string) error {
+		return components.Headers.Value(k).Validate(ctx)
 	}); err != nil {
 		return err
 	}
 
-	if err := validateMap("security scheme", componentNames(components.SecuritySchemes), func(k string) error {
-		return components.SecuritySchemes[k].Validate(ctx)
+	if err := validateMap("security scheme", components.SecuritySchemes.Keys(), func(k string) error {
+		return components.SecuritySchemes.Value(k).Validate(ctx)
 	}); err != nil {
 		return err
 	}
 
-	if err := validateMap("example", componentNames(components.Examples), func(k string) error {
-		return components.Examples[k].Validate(ctx)
+	if err := validateMap("example", components.Examples.Keys(), func(k string) error {
+		return components.Examples.Value(k).Validate(ctx)
 	}); err != nil {
 		return err
 	}
 
-	if err := validateMap("link", componentNames(components.Links), func(k string) error {
-		return components.Links[k].Validate(ctx)
+	if err := validateMap("link", components.Links.Keys(), func(k string) error {
+		return components.Links.Value(k).Validate(ctx)
 	}); err != nil {
 		return err
 	}
 
-	if err := validateMap("callback", componentNames(components.Callbacks), func(k string) error {
-		return components.Callbacks[k].Validate(ctx)
+	if err := validateMap("callback", components.Callbacks.Keys(), func(k string) error {
+		return components.Callbacks.Value(k).Validate(ctx)
 	}); err != nil {
 		return err
 	}
@@ -190,119 +178,43 @@ func (components *Components) Validate(ctx context.Context, opts ...ValidationOp
 	return me.finalize(validateExtensions(ctx, components.Extensions, components.Origin))
 }
 
-var _ jsonpointer.JSONPointable = (*Schemas)(nil)
-
-// JSONLookup implements https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
-func (m Schemas) JSONLookup(token string) (any, error) {
-	if v, ok := m[token]; !ok || v == nil {
-		return nil, fmt.Errorf("no schema %q", token)
-	} else if ref := v.Ref; ref != "" {
-		return &Ref{Ref: ref}, nil
-	} else {
-		return v.Value, nil
+// refsForCollection iterates the named ComponentRef collection in document
+// order. It yields nothing when the name is not one of the collections
+// reachable through a $ref (see ComponentRef.CollectionName).
+func (components *Components) refsForCollection(name string) iter.Seq2[string, ComponentRef] {
+	if components == nil {
+		return func(yield func(string, ComponentRef) bool) {}
 	}
+
+	switch name {
+	case "schemas":
+		return asComponentRefs(components.Schemas.Iter())
+	case "parameters":
+		return asComponentRefs(components.Parameters.Iter())
+	case "headers":
+		return asComponentRefs(components.Headers.Iter())
+	case "requestBodies":
+		return asComponentRefs(components.RequestBodies.Iter())
+	case "responses":
+		return asComponentRefs(components.Responses.Iter())
+	case "securitySchemes":
+		return asComponentRefs(components.SecuritySchemes.Iter())
+	case "examples":
+		return asComponentRefs(components.Examples.Iter())
+	case "links":
+		return asComponentRefs(components.Links.Iter())
+	case "callbacks":
+		return asComponentRefs(components.Callbacks.Iter())
+	}
+	return func(yield func(string, ComponentRef) bool) {}
 }
 
-var _ jsonpointer.JSONPointable = (*ParametersMap)(nil)
-
-// JSONLookup implements https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
-func (m ParametersMap) JSONLookup(token string) (any, error) {
-	if v, ok := m[token]; !ok || v == nil {
-		return nil, fmt.Errorf("no parameter %q", token)
-	} else if ref := v.Ref; ref != "" {
-		return &Ref{Ref: ref}, nil
-	} else {
-		return v.Value, nil
-	}
-}
-
-var _ jsonpointer.JSONPointable = (*Headers)(nil)
-
-// JSONLookup implements https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
-func (m Headers) JSONLookup(token string) (any, error) {
-	if v, ok := m[token]; !ok || v == nil {
-		return nil, fmt.Errorf("no header %q", token)
-	} else if ref := v.Ref; ref != "" {
-		return &Ref{Ref: ref}, nil
-	} else {
-		return v.Value, nil
-	}
-}
-
-var _ jsonpointer.JSONPointable = (*RequestBodyRef)(nil)
-
-// JSONLookup implements https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
-func (m RequestBodies) JSONLookup(token string) (any, error) {
-	if v, ok := m[token]; !ok || v == nil {
-		return nil, fmt.Errorf("no request body %q", token)
-	} else if ref := v.Ref; ref != "" {
-		return &Ref{Ref: ref}, nil
-	} else {
-		return v.Value, nil
-	}
-}
-
-var _ jsonpointer.JSONPointable = (*ResponseRef)(nil)
-
-// JSONLookup implements https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
-func (m ResponseBodies) JSONLookup(token string) (any, error) {
-	if v, ok := m[token]; !ok || v == nil {
-		return nil, fmt.Errorf("no response body %q", token)
-	} else if ref := v.Ref; ref != "" {
-		return &Ref{Ref: ref}, nil
-	} else {
-		return v.Value, nil
-	}
-}
-
-var _ jsonpointer.JSONPointable = (*SecuritySchemes)(nil)
-
-// JSONLookup implements https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
-func (m SecuritySchemes) JSONLookup(token string) (any, error) {
-	if v, ok := m[token]; !ok || v == nil {
-		return nil, fmt.Errorf("no security scheme body %q", token)
-	} else if ref := v.Ref; ref != "" {
-		return &Ref{Ref: ref}, nil
-	} else {
-		return v.Value, nil
-	}
-}
-
-var _ jsonpointer.JSONPointable = (*Examples)(nil)
-
-// JSONLookup implements https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
-func (m Examples) JSONLookup(token string) (any, error) {
-	if v, ok := m[token]; !ok || v == nil {
-		return nil, fmt.Errorf("no example body %q", token)
-	} else if ref := v.Ref; ref != "" {
-		return &Ref{Ref: ref}, nil
-	} else {
-		return v.Value, nil
-	}
-}
-
-var _ jsonpointer.JSONPointable = (*Links)(nil)
-
-// JSONLookup implements https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
-func (m Links) JSONLookup(token string) (any, error) {
-	if v, ok := m[token]; !ok || v == nil {
-		return nil, fmt.Errorf("no link body %q", token)
-	} else if ref := v.Ref; ref != "" {
-		return &Ref{Ref: ref}, nil
-	} else {
-		return v.Value, nil
-	}
-}
-
-var _ jsonpointer.JSONPointable = (*Callbacks)(nil)
-
-// JSONLookup implements https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
-func (m Callbacks) JSONLookup(token string) (any, error) {
-	if v, ok := m[token]; !ok || v == nil {
-		return nil, fmt.Errorf("no callback body %q", token)
-	} else if ref := v.Ref; ref != "" {
-		return &Ref{Ref: ref}, nil
-	} else {
-		return v.Value, nil
+func asComponentRefs[V ComponentRef](seq iter.Seq2[string, V]) iter.Seq2[string, ComponentRef] {
+	return func(yield func(string, ComponentRef) bool) {
+		for k, v := range seq {
+			if !yield(k, v) {
+				return
+			}
+		}
 	}
 }

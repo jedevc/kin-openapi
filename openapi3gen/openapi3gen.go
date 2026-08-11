@@ -102,7 +102,7 @@ func CreateComponentSchemas(exso ExportComponentSchemasOptions) Option {
 }
 
 // NewSchemaRefForValue is a shortcut for NewGenerator(...).NewSchemaRefForValue(...)
-func NewSchemaRefForValue(value any, schemas openapi3.Schemas, opts ...Option) (*openapi3.SchemaRef, error) {
+func NewSchemaRefForValue(value any, schemas *openapi3.Schemas, opts ...Option) (*openapi3.SchemaRef, error) {
 	g := NewGenerator(opts...)
 	return g.NewSchemaRefForValue(value, schemas)
 }
@@ -141,22 +141,33 @@ func (g *Generator) GenerateSchemaRef(t reflect.Type) (*openapi3.SchemaRef, erro
 }
 
 // NewSchemaRefForValue uses reflection on the given value to produce a SchemaRef, and updates a supplied map with any dependent component schemas if they lead to cycles
-func (g *Generator) NewSchemaRefForValue(value any, schemas openapi3.Schemas) (*openapi3.SchemaRef, error) {
+func (g *Generator) NewSchemaRefForValue(value any, schemas *openapi3.Schemas) (*openapi3.SchemaRef, error) {
 	ref, err := g.GenerateSchemaRef(reflect.TypeOf(value))
 	if err != nil {
 		return nil, err
 	}
+	// g.SchemaRefs is keyed by pointer, so its iteration order is randomized
+	// per process. Sort by the resolved component name first so registration
+	// into schemas (and therefore its marshaled order) is deterministic.
+	refs := make([]*openapi3.SchemaRef, 0, len(g.SchemaRefs))
 	for ref := range g.SchemaRefs {
+		refs = append(refs, ref)
+	}
+	slices.SortFunc(refs, func(a, b *openapi3.SchemaRef) int {
+		return strings.Compare(a.Ref, b.Ref)
+	})
+
+	for _, ref := range refs {
 		refName := ref.Ref
 		if g.opts.exportComponentSchemas.ExportComponentSchemas && strings.HasPrefix(refName, "#/components/schemas/") {
 			refName = strings.TrimPrefix(refName, "#/components/schemas/")
 		}
 
 		if _, ok := g.componentSchemaRefs[refName]; ok && schemas != nil {
-			if ref.Value != nil && ref.Value.Properties != nil {
-				schemas[refName] = &openapi3.SchemaRef{
+			if ref.Value != nil && ref.Value.Properties.Len() != 0 {
+				schemas.Set(refName, &openapi3.SchemaRef{
 					Value: ref.Value,
-				}
+				})
 			}
 		}
 		if strings.HasPrefix(ref.Ref, "#/components/schemas/") {
@@ -394,7 +405,7 @@ func (g *Generator) generateWithoutSaving(parents []*theTypeInfo, t reflect.Type
 			}
 
 			// Object only if it has properties
-			if schema.Properties != nil {
+			if schema.Properties.Len() != 0 {
 				schema.Type = &openapi3.Types{"object"}
 			}
 		}

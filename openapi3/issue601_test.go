@@ -27,7 +27,7 @@ func TestIssue601(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now let's remove all the invalid parts
-	for _, schema := range doc.Components.Schemas {
+	for _, schema := range doc.Components.Schemas.Iter() {
 		schema.Value.Example = nil
 	}
 

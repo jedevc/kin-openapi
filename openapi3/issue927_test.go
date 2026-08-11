@@ -43,9 +43,9 @@ components:
 			}
 			require.NoError(t, err)
 
-			require.False(t, doc.Components.Schemas["String"].Value.Nullable)
-			require.True(t, doc.Components.Schemas["NullableString"].Value.Nullable)
-			require.True(t, doc.Components.Schemas["NullableRef"].Value.Nullable)
+			require.False(t, doc.Components.Schemas.Value("String").Value.Nullable)
+			require.True(t, doc.Components.Schemas.Value("NullableString").Value.Nullable)
+			require.True(t, doc.Components.Schemas.Value("NullableRef").Value.Nullable)
 		})
 	}
 }

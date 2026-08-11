@@ -49,6 +49,8 @@ func (x *{{ $type.Name }}Ref) CollectionName() string { return "{{ $type.Collect
 // RefPath returns the path of the $ref relative to the root document.
 func (x *{{ $type.Name }}Ref) RefPath() *url.URL { return copyURI(x.refPath) }
 
+func (x *{{ $type.Name }}Ref) refValue() any { return x.Value }
+
 func (x *{{ $type.Name }}Ref) setRefPath(u *url.URL) {
 	// Once the refPath is set don't override. References can be loaded
 	// multiple times not all with access to the correct path info.

@@ -27,8 +27,8 @@ func TestIssue220(t *testing.T) {
 		require.Equal(t, &openapi3.Types{"integer"}, doc.
 			Paths.Value("/foo").
 			Get.Responses.Value("200").Value.
-			Content["application/json"].
-			Schema.Value.Properties["bar"].Value.
+			Content.Value("application/json").
+			Schema.Value.Properties.Value("bar").Value.
 			Type)
 	}
 }

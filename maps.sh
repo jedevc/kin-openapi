@@ -27,7 +27,11 @@ names+=('paths')
 [[ "${#types[@]}" = "${#value_types[@]}" ]]
 [[ "${#types[@]}" = "${#deref_vs[@]}" ]]
 [[ "${#types[@]}" = "${#names[@]}" ]]
-[[ "${#types[@]}" = "$(git grep -InF ' m map[string]*' -- openapi3/loader.go | wc -l)" ]]
+# Each of these 3 types wraps an OrderedMap field declared in its own file
+# (response.go, callback.go, paths.go); this counts those declarations
+# rather than grepping loader.go, which no longer touches the field directly
+# (it goes through the public Map() accessor there instead).
+[[ "${#types[@]}" = "$(git grep -InE '^\s+m \*OrderedMap\[string, ' -- openapi3/response.go openapi3/callback.go openapi3/paths.go | wc -l)" ]]
 
 
 maplike_header() {
@@ -36,6 +40,7 @@ package openapi3
 
 import (
 	"encoding/json"
+	"iter"
 	"maps"
 	"strings"
 
@@ -74,38 +79,38 @@ maplike_NewWithCapa() {
 	cat <<EOF >>"$maplike"
 // New${type#'*'}WithCapacity builds a ${name} object of the given capacity.
 func New${type#'*'}WithCapacity(cap int) ${type} {
-	if cap == 0 {
-		return &${type#'*'}{m: make(map[string]${value_type})}
-	}
-	return &${type#'*'}{m: make(map[string]${value_type}, cap)}
+	return &${type#'*'}{m: NewOrderedMapWithCapacity[string, ${value_type}](cap)}
 }
 
 EOF
 }
 
 
-maplike_KeysValueSetLenDelete() {
+maplike_KeysValueSetLenDeleteMapIter() {
 	cat <<EOF >>"$maplike"
-// Keys returns the ${name} keys in a fixed order
+// Keys returns the ${name} keys in insertion order.
 func (${name} ${type}) Keys() []string {
-	return componentNames(${name}.Map())
+	if ${name} == nil || ${name}.m == nil {
+		return nil
+	}
+	return ${name}.m.Keys()
 }
 
 // Value returns the ${name} for key or nil
 func (${name} ${type}) Value(key string) ${value_type} {
-	if ${name}.Len() == 0 {
+	if ${name} == nil || ${name}.m == nil {
 		return nil
 	}
-	return ${name}.m[key]
+	return ${name}.m.Value(key)
 }
 
 // Set adds or replaces key 'key' of '${name}' with 'value'.
 // Note: '${name}' MUST be non-nil
 func (${name} ${type}) Set(key string, value ${value_type}) {
 	if ${name}.m == nil {
-		${name}.m = make(map[string]${value_type})
+		${name}.m = NewOrderedMap[string, ${value_type}]()
 	}
-	${name}.m[key] = value
+	${name}.m.Set(key, value)
 }
 
 // Len returns the amount of keys in ${name} excluding ${name}.Extensions.
@@ -113,25 +118,31 @@ func (${name} ${type}) Len() int {
 	if ${name} == nil || ${name}.m == nil {
 		return 0
 	}
-	return len(${name}.m)
+	return ${name}.m.Len()
 }
 
 // Delete removes the entry associated with key 'key' from '${name}'.
 func (${name} ${type}) Delete(key string) {
 	if ${name} != nil && ${name}.m != nil {
-		delete(${name}.m, key)
+		${name}.m.Delete(key)
 	}
 }
 
 // Map returns ${name} as a 'map'.
 // Note: iteration on Go maps is not ordered.
-func (${name} ${type}) Map() (m map[string]${value_type}) {
-	if ${name} == nil || len(${name}.m) == 0 {
+func (${name} ${type}) Map() map[string]${value_type} {
+	if ${name} == nil || ${name}.m == nil {
 		return make(map[string]${value_type})
 	}
-	m = make(map[string]${value_type}, len(${name}.m))
-	maps.Copy(m, ${name}.m)
-	return
+	return ${name}.m.Map()
+}
+
+// Iter returns an iterator over ${name} in insertion order.
+func (${name} ${type}) Iter() iter.Seq2[string, ${value_type}] {
+	if ${name} == nil || ${name}.m == nil {
+		return func(yield func(string, ${value_type}) bool) {}
+	}
+	return ${name}.m.Iter()
 }
 
 EOF
@@ -175,52 +186,59 @@ func (${name} ${type}) MarshalYAML() (any, error) {
 	}
 	m := make(map[string]any, ${name}.Len()+len(${name}.Extensions))
 	maps.Copy(m, ${name}.Extensions)
-	for _, k := range ${name}.Keys() {
-		m[k] = ${name}.m[k]
+	for k, v := range ${name}.Iter() {
+		m[k] = v
 	}
 	return m, nil
 }
 
 // MarshalJSON returns the JSON encoding of ${type#'*'}.
 func (${name} ${type}) MarshalJSON() ([]byte, error) {
-	${name}Yaml, err := ${name}.MarshalYAML()
-	if err != nil {
-		return nil, err
+	if ${nil_condition} {
+		return []byte("null"), nil
 	}
-	return json.Marshal(${name}Yaml)
+	m := NewOrderedMap[string, any]()
+	for k, v := range ${name}.Iter() {
+		m.Set(k, v)
+	}
+	for k, v := range ${name}.Extensions {
+		m.Set(k, v)
+	}
+	return m.MarshalJSON()
 }
 
 // UnmarshalJSON sets ${type#'*'} to a copy of data.
-func (${name} ${type}) UnmarshalJSON(data []byte) (err error) {
-	var m map[string]any
-	if err = json.Unmarshal(data, &m); err != nil {
-		return
-	}
-
-	x := ${type#'*'}{
+func (${name} ${type}) UnmarshalJSON(data []byte) error {
+	x := &${type#'*'}{
 		Extensions: make(map[string]any),
-		m:          make(map[string]${value_type}, len(m)),
+		m:          NewOrderedMap[string, ${value_type}](),
 	}
 
-	for _, k := range componentNames(m) {
-		v := m[k]
+	if err := unmarshalJSONWithOrder(data, func(k string, v json.RawMessage) error {
 		if strings.HasPrefix(k, "x-") {
-			x.Extensions[k] = v
-			continue
+			var ext any
+			if err := json.Unmarshal(v, &ext); err != nil {
+				return err
+			}
+			x.Extensions[k] = ext
+			return nil
 		}
 
-		var data []byte
-		if data, err = json.Marshal(v); err != nil {
-			return
-		}
 		var vv ${value_type#'*'}
-		if err = vv.UnmarshalJSON(data); err != nil {
-			return
+		if err := vv.UnmarshalJSON(v); err != nil {
+			return err
 		}
-		x.m[k] = &vv
+		x.m.Set(k, &vv)
+		return nil
+	}); err != nil {
+		return err
 	}
-	*${name} = x
-	return
+
+	if len(x.Extensions) == 0 {
+		x.Extensions = nil
+	}
+	*${name} = *x
+	return nil
 }
 EOF
 }
@@ -270,7 +288,7 @@ for i in "${!types[@]}"; do
 	name=${names[$i]}
 
 	type="$type" name="$name" value_type="$value_type" maplike_NewWithCapa
-	type="$type" name="$name" value_type="$value_type" maplike_KeysValueSetLenDelete
+	type="$type" name="$name" value_type="$value_type" maplike_KeysValueSetLenDeleteMapIter
 	type="$type" name="$name"    deref_v="$deref_v"    maplike_Pointable
 	type="$type" name="$name" value_type="$value_type" maplike_UnMarsh
 	[[ $((i+1)) != "${#types[@]}" ]] && echo >>"$maplike"

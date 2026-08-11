@@ -195,10 +195,10 @@ func (parameter Parameter) MarshalYAML() (any, error) {
 	if x := parameter.Example; x != nil {
 		m["example"] = x
 	}
-	if x := parameter.Examples; len(x) != 0 {
+	if x := parameter.Examples; x.Len() != 0 {
 		m["examples"] = x
 	}
-	if x := parameter.Content; len(x) != 0 {
+	if x := parameter.Content; x.Len() != 0 {
 		m["content"] = x
 	}
 
@@ -361,13 +361,13 @@ func (parameter *Parameter) Validate(ctx context.Context, opts ...ValidationOpti
 		return &ParameterFieldValidationError{ParameterName: parameter.Name, Field: "schema", Cause: e}
 	}
 
-	if (parameter.Schema == nil) == (len(parameter.Content) == 0) {
+	if (parameter.Schema == nil) == (parameter.Content.Len() == 0) {
 		return &ParameterFieldValidationError{ParameterName: parameter.Name, Field: "schema",
 			Cause: newParameterContentSchemaExactlyOne(parameter.Origin)}
 	}
 
-	if content := parameter.Content; content != nil {
-		if len(content) > 1 {
+	if content := parameter.Content; content.Len() != 0 {
+		if content.Len() > 1 {
 			return &ParameterFieldValidationError{ParameterName: parameter.Name, Field: "content",
 				Cause: newParameterContentSingleEntry(parameter.Origin)}
 		}
@@ -381,7 +381,7 @@ func (parameter *Parameter) Validate(ctx context.Context, opts ...ValidationOpti
 		if err := schema.Validate(ctx); err != nil {
 			return &ParameterFieldValidationError{ParameterName: parameter.Name, Field: "schema", Cause: err}
 		}
-		if parameter.Example != nil && parameter.Examples != nil {
+		if parameter.Example != nil && parameter.Examples.Len() != 0 {
 			return newParameterExampleAndExamplesExclusive(parameter.Name, parameter.Origin)
 		}
 
@@ -392,9 +392,8 @@ func (parameter *Parameter) Validate(ctx context.Context, opts ...ValidationOpti
 			if err := validateExampleValue(ctx, example, schema.Value); err != nil {
 				return newSchemaValueError("example", err, parameter.Origin)
 			}
-		} else if examples := parameter.Examples; examples != nil {
-			for _, k := range componentNames(examples) {
-				v := examples[k]
+		} else {
+			for k, v := range parameter.Examples.Iter() {
 				if err := v.Validate(ctx); err != nil {
 					return &ParameterExampleValidationError{ExampleName: k, Cause: err}
 				}

@@ -38,10 +38,10 @@ info:
 	require.NoError(t, err)
 
 	require.Equal(t, "An API", doc.Info.Title)
-	require.Equal(t, 2, len(doc.Components.Schemas))
+	require.Equal(t, 2, doc.Components.Schemas.Len())
 	require.Equal(t, 0, doc.Paths.Len())
 
-	require.Equal(t, &openapi3.Types{"string"}, doc.Components.Schemas["schema2"].Value.Properties["prop"].Value.Type)
+	require.Equal(t, &openapi3.Types{"string"}, doc.Components.Schemas.Value("schema2").Value.Properties.Value("prop").Value.Type)
 }
 
 func TestExclusiveValuesOfValuesAdditionalProperties(t *testing.T) {
@@ -129,7 +129,7 @@ info:
 			err = doc.Validate(loader.Context)
 			require.NoError(t, err)
 
-			for propName, propSchema := range doc.Components.Schemas {
+			for propName, propSchema := range doc.Components.Schemas.Iter() {
 				t.Run(propName, func(t *testing.T) {
 					ap := propSchema.Value.AdditionalProperties.Schema
 					apa := propSchema.Value.AdditionalProperties.Has

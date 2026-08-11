@@ -39,7 +39,7 @@ func TestIssue341(t *testing.T) {
 		Paths.Value("/testpath").
 		Get.
 		Responses.Value("200").Value.
-		Content["application/json"].
+		Content.Value("application/json").
 		Schema.Value.
 		Type)
 

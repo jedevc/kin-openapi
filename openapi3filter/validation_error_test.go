@@ -470,7 +470,7 @@ func getValidationTests(t *testing.T) []*validationTest {
 			wantErrSchemaPath:   "/photoUrls",
 			wantErrSchemaValue:  "http://cat",
 			// TODO: this shouldn't say "or not be present", but this requires recursively resolving
-			//  innerErr.JSONPointer() against e.RequestBody.Content["application/json"].Schema.Value (.Required, .Properties)
+			//  innerErr.JSONPointer() against e.RequestBody.Content.Value("application/json").Schema.Value (.Required, .Properties)
 			wantErrResponse: &ValidationError{
 				Status: http.StatusUnprocessableEntity,
 				Title:  "value must be an array",

@@ -82,8 +82,8 @@ properties:
 		return
 	}
 
-	petSchema := doc.Components.Schemas["Pet"]
-	nameType := petSchema.Value.Properties["name"].Value.Type.Slice()[0]
+	petSchema := doc.Components.Schemas.Value("Pet")
+	nameType := petSchema.Value.Properties.Value("name").Value.Type.Slice()[0]
 	fmt.Println("pet.name type:", nameType)
 	// Output: pet.name type: string
 }

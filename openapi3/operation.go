@@ -90,7 +90,7 @@ func (operation Operation) MarshalYAML() (any, error) {
 	if x := operation.Responses; x != nil {
 		m["responses"] = x
 	}
-	if x := operation.Callbacks; len(x) != 0 {
+	if x := operation.Callbacks; x.Len() != 0 {
 		m["callbacks"] = x
 	}
 	if x := operation.Deprecated; x {

@@ -34,7 +34,7 @@ paths:
 	err = v3.Validate(t.Context())
 	require.NoError(t, err)
 
-	require.Equal(t, []string{"file"}, v3.Paths.Value("/ping").Post.RequestBody.Value.Content["multipart/form-data"].Schema.Value.Required)
+	require.Equal(t, []string{"file"}, v3.Paths.Value("/ping").Post.RequestBody.Value.Content.Value("multipart/form-data").Schema.Value.Required)
 
-	require.Nil(t, v3.Paths.Value("/ping").Post.RequestBody.Value.Content["multipart/form-data"].Schema.Value.Properties["file"].Value.Required)
+	require.Nil(t, v3.Paths.Value("/ping").Post.RequestBody.Value.Content.Value("multipart/form-data").Schema.Value.Properties.Value("file").Value.Required)
 }

@@ -58,7 +58,7 @@ paths:
 		require.Empty(t, doc.Info.License.Identifier) // 3.0 doesn't have this
 
 		// Verify webhooks is nil for 3.0
-		require.Nil(t, doc.Webhooks)
+		require.Zero(t, doc.Webhooks.Len())
 		require.Empty(t, doc.JSONSchemaDialect)
 
 		// Validate
@@ -172,8 +172,8 @@ webhooks:
 		require.Equal(t, "3.1", doc.OpenAPIMajorMinor())
 
 		// Verify 3.1 fields
-		require.NotNil(t, doc.Webhooks)
-		require.Contains(t, doc.Webhooks, "newUser")
+		require.NotZero(t, doc.Webhooks.Len())
+		require.NotNil(t, doc.Webhooks.Value("newUser"))
 		require.Equal(t, "https://json-schema.org/draft/2020-12/schema", doc.JSONSchemaDialect)
 
 		// Verify license identifier
@@ -284,7 +284,7 @@ webhooks:
 				},
 			},
 			Paths: openapi3.NewPaths(),
-			Webhooks: map[string]*openapi3.PathItem{
+			Webhooks: openapi3.WebhooksFromMap(map[string]*openapi3.PathItem{
 				"test": {
 					Post: &openapi3.Operation{
 						Summary: "Test webhook",
@@ -297,7 +297,7 @@ webhooks:
 						),
 					},
 				},
-			},
+			}),
 		}
 
 		// Serialize
@@ -313,8 +313,8 @@ webhooks:
 		require.Equal(t, "3.1.0", doc2.OpenAPI)
 		require.Equal(t, "https://json-schema.org/draft/2020-12/schema", doc2.JSONSchemaDialect)
 		require.Equal(t, "Apache-2.0", doc2.Info.License.Identifier)
-		require.NotNil(t, doc2.Webhooks)
-		require.Contains(t, doc2.Webhooks, "test")
+		require.NotZero(t, doc2.Webhooks.Len())
+		require.NotNil(t, doc2.Webhooks.Value("test"))
 	})
 }
 
@@ -326,30 +326,30 @@ func TestJSONSchema2020Validator_RealWorld(t *testing.T) {
 
 		schema := &openapi3.Schema{
 			Type: &openapi3.Types{"object"},
-			Properties: openapi3.Schemas{
-				"user": &openapi3.SchemaRef{
+			Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+				"user": {
 					Value: &openapi3.Schema{
 						Type: &openapi3.Types{"object"},
-						Properties: openapi3.Schemas{
-							"id": &openapi3.SchemaRef{
+						Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+							"id": {
 								Value: &openapi3.Schema{Type: &openapi3.Types{"integer"}},
 							},
-							"name": &openapi3.SchemaRef{
+							"name": {
 								Value: &openapi3.Schema{
 									Type: &openapi3.Types{"string", "null"},
 								},
 							},
-							"age": &openapi3.SchemaRef{
+							"age": {
 								Value: &openapi3.Schema{
 									Type: &openapi3.Types{"integer"},
 									Min:  &min,
 								},
 							},
-						},
+						}),
 						Required: []string{"id"},
 					},
 				},
-				"tags": &openapi3.SchemaRef{
+				"tags": {
 					Value: &openapi3.Schema{
 						Type: &openapi3.Types{"array", "null"},
 						Items: &openapi3.SchemaRef{
@@ -357,7 +357,7 @@ func TestJSONSchema2020Validator_RealWorld(t *testing.T) {
 						},
 					},
 				},
-			},
+			}),
 			Required: []string{"user"},
 		}
 
@@ -401,32 +401,32 @@ func TestJSONSchema2020Validator_RealWorld(t *testing.T) {
 				&openapi3.SchemaRef{
 					Value: &openapi3.Schema{
 						Type: &openapi3.Types{"object"},
-						Properties: openapi3.Schemas{
-							"type": &openapi3.SchemaRef{
+						Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+							"type": {
 								Value: &openapi3.Schema{
 									Const: "email",
 								},
 							},
-							"email": &openapi3.SchemaRef{
+							"email": {
 								Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
 							},
-						},
+						}),
 						Required: []string{"type", "email"},
 					},
 				},
 				&openapi3.SchemaRef{
 					Value: &openapi3.Schema{
 						Type: &openapi3.Types{"object"},
-						Properties: openapi3.Schemas{
-							"type": &openapi3.SchemaRef{
+						Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+							"type": {
 								Value: &openapi3.Schema{
 									Const: "phone",
 								},
 							},
-							"phone": &openapi3.SchemaRef{
+							"phone": {
 								Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
 							},
-						},
+						}),
 						Required: []string{"type", "phone"},
 					},
 				},
@@ -535,7 +535,7 @@ func TestEdgeCases(t *testing.T) {
 			OpenAPI:  "3.1.0",
 			Info:     &openapi3.Info{Title: "Test", Version: "1.0.0"},
 			Paths:    openapi3.NewPaths(),
-			Webhooks: map[string]*openapi3.PathItem{},
+			Webhooks: *openapi3.NewWebhooks(),
 		}
 
 		// Nil webhooks should not serialize
@@ -577,7 +577,7 @@ func TestPerformance(t *testing.T) {
 	t.Run("large schema compilation", func(t *testing.T) {
 
 		// Create a large schema
-		properties := make(openapi3.Schemas)
+		properties := make(map[string]*openapi3.SchemaRef)
 		for i := range 100 {
 			properties[string(rune('a'+i%26))+string(rune('0'+i/26))] = &openapi3.SchemaRef{
 				Value: &openapi3.Schema{
@@ -588,7 +588,7 @@ func TestPerformance(t *testing.T) {
 
 		schema := &openapi3.Schema{
 			Type:       &openapi3.Types{"object"},
-			Properties: properties,
+			Properties: openapi3.SchemasFromMap(properties),
 		}
 
 		// Should compile and validate without hanging
@@ -603,14 +603,14 @@ func TestPerformance(t *testing.T) {
 		current := schema
 
 		for range 10 {
-			current.Properties = openapi3.Schemas{
-				"nested": &openapi3.SchemaRef{
+			current.Properties = openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+				"nested": {
 					Value: &openapi3.Schema{
 						Type: &openapi3.Types{"object"},
 					},
 				},
-			}
-			current = current.Properties["nested"].Value
+			})
+			current = current.Properties.Value("nested").Value
 		}
 
 		// Should serialize without issue

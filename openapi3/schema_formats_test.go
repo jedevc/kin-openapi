@@ -100,7 +100,7 @@ components:
 	doc, err := l.LoadFromData([]byte(spc))
 	require.NoError(t, err)
 
-	err = doc.Components.Schemas["Something"].Value.VisitJSON(map[string]any{
+	err = doc.Components.Schemas.Value("Something").Value.VisitJSON(map[string]any{
 		`ip`: `123.0.0.11111`,
 	})
 

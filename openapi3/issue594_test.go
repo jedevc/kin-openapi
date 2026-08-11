@@ -24,7 +24,7 @@ func TestIssue594(t *testing.T) {
 
 	doc.Info.Version = "1.2.3"
 	doc.Paths.Value("/marketing/contacts/search/emails").Post = nil
-	doc.Components.Schemas["full-segment"].Value.Example = nil
+	doc.Components.Schemas.Value("full-segment").Value.Example = nil
 
 	err = doc.Validate(sl.Context)
 	require.NoError(t, err)

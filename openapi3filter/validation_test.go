@@ -128,9 +128,9 @@ func TestFilter(t *testing.T) {
 							Value: &openapi3.Parameter{
 								In:   "query",
 								Name: "contentArg2",
-								Content: openapi3.Content{
+								Content: openapi3.ContentFromMap(map[string]*openapi3.MediaType{
 									"application/something_funny": openapi3.NewMediaType().WithSchema(complexArgSchema),
-								},
+								}),
 							},
 						},
 					},
@@ -375,7 +375,7 @@ func TestValidateRequestBody(t *testing.T) {
 		WithRequired(true)
 
 	plainTextContent := openapi3.NewContent()
-	plainTextContent["text/plain"] = openapi3.NewMediaType().WithSchema(openapi3.NewStringSchema())
+	plainTextContent.Set("text/plain", openapi3.NewMediaType().WithSchema(openapi3.NewStringSchema()))
 
 	testCases := []struct {
 		name    string
@@ -536,15 +536,15 @@ func TestRootSecurityRequirementsAreUsedIfNotProvidedAtTheOperationLevel(t *test
 			},
 		},
 		Components: &openapi3.Components{
-			SecuritySchemes: map[string]*openapi3.SecuritySchemeRef{},
+			SecuritySchemes: openapi3.NewSecuritySchemes(),
 		},
 	}
 
 	// Add the security schemes to the components
 	for _, scheme := range securitySchemes {
-		doc.Components.SecuritySchemes[scheme.Name] = &openapi3.SecuritySchemeRef{
+		doc.Components.SecuritySchemes.Set(scheme.Name, &openapi3.SecuritySchemeRef{
 			Value: scheme.Scheme,
-		}
+		})
 	}
 
 	// Add the paths from the test cases to the spec's paths
@@ -659,18 +659,18 @@ func TestAnySecurityRequirementMet(t *testing.T) {
 		},
 		Paths: openapi3.NewPaths(),
 		Components: &openapi3.Components{
-			SecuritySchemes: map[string]*openapi3.SecuritySchemeRef{},
+			SecuritySchemes: openapi3.NewSecuritySchemes(),
 		},
 	}
 
 	// Add the security schemes to the spec's components
 	for schemeName := range schemes {
-		doc.Components.SecuritySchemes[schemeName] = &openapi3.SecuritySchemeRef{
+		doc.Components.SecuritySchemes.Set(schemeName, &openapi3.SecuritySchemeRef{
 			Value: &openapi3.SecurityScheme{
 				Type:   "http",
 				Scheme: "basic",
 			},
-		}
+		})
 	}
 
 	// Add the paths to the spec
@@ -756,18 +756,18 @@ func TestAllSchemesMet(t *testing.T) {
 		},
 		Paths: openapi3.NewPaths(),
 		Components: &openapi3.Components{
-			SecuritySchemes: map[string]*openapi3.SecuritySchemeRef{},
+			SecuritySchemes: openapi3.NewSecuritySchemes(),
 		},
 	}
 
 	// Add the security schemes to the spec's components
 	for schemeName := range schemes {
-		doc.Components.SecuritySchemes[schemeName] = &openapi3.SecuritySchemeRef{
+		doc.Components.SecuritySchemes.Set(schemeName, &openapi3.SecuritySchemeRef{
 			Value: &openapi3.SecurityScheme{
 				Type:   "http",
 				Scheme: "basic",
 			},
-		}
+		})
 	}
 
 	// Add the paths to the spec

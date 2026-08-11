@@ -13,7 +13,7 @@ type Paths struct {
 	Extensions map[string]any `json:"-" yaml:"-"`
 	Origin     *Origin        `json:"-" yaml:"-"`
 
-	m map[string]*PathItem
+	m *OrderedMap[string, *PathItem]
 }
 
 // NewPaths builds a paths object with path items in insertion order.

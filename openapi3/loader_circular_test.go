@@ -24,11 +24,11 @@ func TestLoadCircular(t *testing.T) {
 	}
 	arr.Items.setRefPath(&url.URL{Path: "testdata/circularRef2/AwsEnvironmentSettings.yaml"})
 	obj.Description = "test"
-	obj.Properties = map[string]*SchemaRef{
+	obj.Properties = SchemasFromMap(map[string]*SchemaRef{
 		"children": {
 			Value: arr,
 		},
-	}
+	})
 
 	expected := &SchemaRef{
 		Ref:   ref,

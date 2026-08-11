@@ -71,7 +71,7 @@ components:
 			doc, err := loader.LoadFromData([]byte(strings.ReplaceAll(spec, "3.1.0", tc.oas)))
 			require.NoError(t, err)
 
-			statusRef := doc.Components.Schemas["PingResponse"].Value.Properties["status"]
+			statusRef := doc.Components.Schemas.Value("PingResponse").Value.Properties.Value("status")
 			require.NotNil(t, statusRef)
 
 			// The $ref should still be resolved.
@@ -103,7 +103,7 @@ func TestResolveSchemaRefsIn31Fields(t *testing.T) {
 	schemas := doc.Components.Schemas
 
 	// prefixItems refs should be resolved
-	tupleArray := schemas["TupleArray"].Value
+	tupleArray := schemas.Value("TupleArray").Value
 	require.NotNil(t, tupleArray)
 	require.Len(t, tupleArray.PrefixItems, 2)
 	require.Equal(t, "#/components/schemas/StringType", tupleArray.PrefixItems[0].Ref)
@@ -114,50 +114,50 @@ func TestResolveSchemaRefsIn31Fields(t *testing.T) {
 	require.Equal(t, "integer", tupleArray.PrefixItems[1].Value.Type.Slice()[0])
 
 	// contains ref should be resolved
-	arrayContains := schemas["ArrayWithContains"].Value
+	arrayContains := schemas.Value("ArrayWithContains").Value
 	require.NotNil(t, arrayContains)
 	require.Equal(t, "#/components/schemas/StringType", arrayContains.Contains.Ref)
 	require.NotNil(t, arrayContains.Contains.Value, "contains $ref should be resolved")
 	require.Equal(t, "string", arrayContains.Contains.Value.Type.Slice()[0])
 
 	// patternProperties refs should be resolved
-	patternProps := schemas["ObjectWithPatternProperties"].Value
+	patternProps := schemas.Value("ObjectWithPatternProperties").Value
 	require.NotNil(t, patternProps)
-	pp := patternProps.PatternProperties["^x-"]
+	pp := patternProps.PatternProperties.Value("^x-")
 	require.NotNil(t, pp)
 	require.Equal(t, "#/components/schemas/StringType", pp.Ref)
 	require.NotNil(t, pp.Value, "patternProperties $ref should be resolved")
 
 	// dependentSchemas refs should be resolved
-	depSchemas := schemas["ObjectWithDependentSchemas"].Value
+	depSchemas := schemas.Value("ObjectWithDependentSchemas").Value
 	require.NotNil(t, depSchemas)
-	ds := depSchemas.DependentSchemas["name"]
+	ds := depSchemas.DependentSchemas.Value("name")
 	require.NotNil(t, ds)
 	require.Equal(t, "#/components/schemas/NonNegative", ds.Ref)
 	require.NotNil(t, ds.Value, "dependentSchemas $ref should be resolved")
 
 	// propertyNames ref should be resolved
-	propNames := schemas["ObjectWithPropertyNames"].Value
+	propNames := schemas.Value("ObjectWithPropertyNames").Value
 	require.NotNil(t, propNames)
 	require.Equal(t, "#/components/schemas/NamePattern", propNames.PropertyNames.Ref)
 	require.NotNil(t, propNames.PropertyNames.Value, "propertyNames $ref should be resolved")
 
 	// unevaluatedItems ref should be resolved
-	unItems := schemas["ArrayWithUnevaluatedItems"].Value
+	unItems := schemas.Value("ArrayWithUnevaluatedItems").Value
 	require.NotNil(t, unItems)
 	require.NotNil(t, unItems.UnevaluatedItems.Schema)
 	require.Equal(t, "#/components/schemas/StringType", unItems.UnevaluatedItems.Schema.Ref)
 	require.NotNil(t, unItems.UnevaluatedItems.Schema.Value, "unevaluatedItems $ref should be resolved")
 
 	// unevaluatedProperties ref should be resolved
-	unProps := schemas["ObjectWithUnevaluatedProperties"].Value
+	unProps := schemas.Value("ObjectWithUnevaluatedProperties").Value
 	require.NotNil(t, unProps)
 	require.NotNil(t, unProps.UnevaluatedProperties.Schema)
 	require.Equal(t, "#/components/schemas/StringType", unProps.UnevaluatedProperties.Schema.Ref)
 	require.NotNil(t, unProps.UnevaluatedProperties.Schema.Value, "unevaluatedProperties $ref should be resolved")
 
 	// if/then/else refs should be resolved
-	ifThenElse := schemas["ObjectWithIfThenElse"].Value
+	ifThenElse := schemas.Value("ObjectWithIfThenElse").Value
 	require.NotNil(t, ifThenElse)
 	require.Equal(t, "#/components/schemas/StringType", ifThenElse.If.Ref)
 	require.NotNil(t, ifThenElse.If.Value, "if $ref should be resolved")
@@ -169,7 +169,7 @@ func TestResolveSchemaRefsIn31Fields(t *testing.T) {
 	require.NotNil(t, ifThenElse.Else.Value, "else $ref should be resolved")
 
 	// contentSchema ref should be resolved
-	contentSchema := schemas["StringWithContentSchema"].Value
+	contentSchema := schemas.Value("StringWithContentSchema").Value
 	require.NotNil(t, contentSchema)
 	require.Equal(t, "#/components/schemas/NonNegative", contentSchema.ContentSchema.Ref)
 	require.NotNil(t, contentSchema.ContentSchema.Value, "contentSchema $ref should be resolved")

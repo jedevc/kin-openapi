@@ -21,7 +21,7 @@ func TestOrigin_ExternalRefToArbitraryTopLevelKey(t *testing.T) {
 	doc, err := loader.LoadFromFile("testdata/origin/arbitrary_key.yaml")
 	require.NoError(t, err)
 
-	user := doc.Paths.Value("/users").Get.Responses.Value("200").Value.Content["application/json"].Schema.Value
+	user := doc.Paths.Value("/users").Get.Responses.Value("200").Value.Content.Value("application/json").Schema.Value
 	require.NotNil(t, user, "the User schema resolves")
 
 	require.NotNil(t, user.Origin, "a schema $ref'd under an arbitrary top-level key must carry an origin")
@@ -38,7 +38,7 @@ func TestOrigin_ExternalRefToArbitraryTopLevelKey(t *testing.T) {
 	require.Equal(t, 2, user.Origin.Fields.Get("type").Line, "field origins are attached too")
 
 	// the subtree gets origins as well, with the same file
-	id := user.Properties["id"].Value
+	id := user.Properties.Value("id").Value
 	require.NotNil(t, id.Origin)
 	require.Equal(t, user.Origin.Key.File, id.Origin.Key.File)
 	require.Equal(t, 4, id.Origin.Key.Line, "the id property's own line")
@@ -59,7 +59,7 @@ func TestOrigin_ExternalRefToArbitraryTopLevelKey_NoRereads(t *testing.T) {
 	doc, err := loader.LoadFromFile("testdata/origin/arbitrary_key.yaml")
 	require.NoError(t, err)
 
-	user := doc.Paths.Value("/users").Get.Responses.Value("200").Value.Content["application/json"].Schema.Value
+	user := doc.Paths.Value("/users").Get.Responses.Value("200").Value.Content.Value("application/json").Schema.Value
 	require.NotNil(t, user.Origin, "origins are attached")
 
 	require.Len(t, reads, 2, "the root and the $ref'd file")
@@ -95,7 +95,7 @@ User:
 	doc, err := loader.LoadFromData([]byte(spec))
 	require.NoError(t, err)
 
-	user := doc.Paths.Value("/users").Get.Responses.Value("200").Value.Content["application/json"].Schema.Value
+	user := doc.Paths.Value("/users").Get.Responses.Value("200").Value.Content.Value("application/json").Schema.Value
 	require.NotNil(t, user.Origin, "a same-document arbitrary-key $ref carries an origin")
 	require.NotNil(t, user.Origin.Key)
 	require.Equal(t, "User", user.Origin.Key.Name)

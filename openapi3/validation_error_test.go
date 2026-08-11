@@ -108,7 +108,7 @@ func TestValidationError_FieldVersionMismatch_UntypedFallback(t *testing.T) {
 		OpenAPI:  "3.0.3",
 		Info:     &openapi3.Info{Title: "x", Version: "1.0.0"},
 		Paths:    openapi3.NewPaths(),
-		Webhooks: map[string]*openapi3.PathItem{},
+		Webhooks: *openapi3.NewWebhooks(),
 	}
 	err := doc.Validate(context.Background())
 	require.Error(t, err)
@@ -234,7 +234,7 @@ func TestValidationError_SchemaFieldFor31PlusLeaves(t *testing.T) {
 		{
 			name: "patternProperties",
 			schema: &openapi3.Schema{
-				PatternProperties: map[string]*openapi3.SchemaRef{"foo": {Value: &openapi3.Schema{}}},
+				PatternProperties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{"foo": {Value: &openapi3.Schema{}}}),
 			},
 			leafCheck: func(t *testing.T, err error) {
 				var l *openapi3.PatternPropertiesFieldFor31Plus
@@ -676,7 +676,7 @@ func TestValidationError_ServerURLTemplateLeaves(t *testing.T) {
 	t.Run("undeclared variables (name mismatch)", func(t *testing.T) {
 		s := &openapi3.Server{
 			URL:       "https://example.com/{x}",
-			Variables: map[string]*openapi3.ServerVariable{"y": {Default: "z"}},
+			Variables: openapi3.ServerVariablesFromMap(map[string]*openapi3.ServerVariable{"y": {Default: "z"}}),
 		}
 		err := s.Validate(context.Background())
 		require.EqualError(t, err, "server has undeclared variables")
@@ -873,10 +873,10 @@ func TestValidationError_ParameterHeaderContentSchemaLeaves(t *testing.T) {
 	t.Run("parameter content single entry", func(t *testing.T) {
 		p := &openapi3.Parameter{
 			Name: "p", In: "query",
-			Content: openapi3.Content{
-				"application/json": &openapi3.MediaType{},
-				"application/xml":  &openapi3.MediaType{},
-			},
+			Content: openapi3.ContentFromMap(map[string]*openapi3.MediaType{
+				"application/json": {},
+				"application/xml":  {},
+			}),
 		}
 		err := p.Validate(context.Background())
 		require.ErrorContains(t, err, "parameter content must only contain one entry")
@@ -905,10 +905,10 @@ func TestValidationError_ParameterHeaderContentSchemaLeaves(t *testing.T) {
 	t.Run("header content single entry", func(t *testing.T) {
 		h := &openapi3.Header{
 			Parameter: openapi3.Parameter{
-				Content: openapi3.Content{
-					"application/json": &openapi3.MediaType{},
-					"application/xml":  &openapi3.MediaType{},
-				},
+				Content: openapi3.ContentFromMap(map[string]*openapi3.MediaType{
+					"application/json": {},
+					"application/xml":  {},
+				}),
 			},
 		}
 		err := h.Validate(context.Background())
@@ -930,7 +930,7 @@ func TestValidationError_WebhookNilLeaf(t *testing.T) {
 		OpenAPI:  "3.1.0",
 		Info:     &openapi3.Info{Title: "x", Version: "1.0.0"},
 		Paths:    openapi3.NewPaths(),
-		Webhooks: map[string]*openapi3.PathItem{"onEvent": nil},
+		Webhooks: openapi3.WebhooksFromMap(map[string]*openapi3.PathItem{"onEvent": nil}),
 	}
 	err := doc.Validate(context.Background(), openapi3.IsOpenAPI31OrLater())
 	require.EqualError(t, err, `invalid webhooks: webhook "onEvent" is nil`)
@@ -1320,12 +1320,12 @@ func TestValidationError_UnresolvedRef(t *testing.T) {
 		Info:    &openapi3.Info{Title: "t", Version: "1"},
 		Paths:   openapi3.NewPaths(),
 		Components: &openapi3.Components{
-			Schemas: openapi3.Schemas{
-				"X": &openapi3.SchemaRef{
+			Schemas: openapi3.Ptr(openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+				"X": {
 					Ref:   "external.yaml#/T",
 					Value: nil, // unresolved
 				},
-			},
+			})),
 		},
 	}
 	err := doc.Validate(context.Background())

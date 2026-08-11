@@ -22,11 +22,11 @@ func TestLoadOutsideRefs(t *testing.T) {
 		Paths.Value("/service").
 		Get.
 		Responses.Value("200").Value.
-		Content["application/json"].
+		Content.Value("application/json").
 		Schema.Value.
 		Items.Value.
 		AllOf[0].Value.
-		Properties["created_at"].Value.
+		Properties.Value("created_at").Value.
 		Type)
 }
 

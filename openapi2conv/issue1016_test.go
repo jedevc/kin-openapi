@@ -77,5 +77,5 @@ func TestIssue1016(t *testing.T) {
 
 	err = doc3.Validate(t.Context())
 	require.NoError(t, err)
-	require.Equal(t, "#/components/schemas/Pet", doc3.Components.Schemas["PetDirectory"].Value.AdditionalProperties.Schema.Ref)
+	require.Equal(t, "#/components/schemas/Pet", doc3.Components.Schemas.Value("PetDirectory").Value.AdditionalProperties.Schema.Ref)
 }

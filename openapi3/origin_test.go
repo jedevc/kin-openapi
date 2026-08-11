@@ -145,7 +145,7 @@ func TestOrigin_RequestBody(t *testing.T) {
 		},
 		base.Origin.Key)
 
-	require.NotNil(t, base.Content["application/json"].Origin)
+	require.NotNil(t, base.Content.Value("application/json").Origin)
 	require.Equal(t,
 		&openapi3.Location{
 			File:      "testdata/origin/request_body.yaml",
@@ -155,7 +155,7 @@ func TestOrigin_RequestBody(t *testing.T) {
 			EndLine:   19,
 			EndColumn: 31,
 		},
-		base.Content["application/json"].Origin.Key)
+		base.Content.Value("application/json").Origin.Key)
 }
 
 func TestOrigin_Responses(t *testing.T) {
@@ -264,7 +264,7 @@ func TestOrigin_SchemaInAdditionalProperties(t *testing.T) {
 	doc, err := loader.LoadFromFile("testdata/origin/additional_properties.yaml")
 	require.NoError(t, err)
 
-	base := doc.Paths.Find("/partner-api/test/some-method").Get.Responses.Value("200").Value.Content["application/json"].Schema.Value.AdditionalProperties
+	base := doc.Paths.Find("/partner-api/test/some-method").Get.Responses.Value("200").Value.Content.Value("application/json").Schema.Value.AdditionalProperties
 	require.NotNil(t, base)
 
 	require.NotNil(t, base.Schema.Value.Origin)
@@ -340,7 +340,7 @@ func TestOrigin_Security(t *testing.T) {
 	doc, err := loader.LoadFromFile("testdata/origin/security.yaml")
 	require.NoError(t, err)
 
-	base := doc.Components.SecuritySchemes["petstore_auth"].Value
+	base := doc.Components.SecuritySchemes.Value("petstore_auth").Value
 	require.NotNil(t, base)
 
 	require.Equal(t,
@@ -414,7 +414,7 @@ func TestOrigin_Example(t *testing.T) {
 	doc, err := loader.LoadFromFile("testdata/origin/example.yaml")
 	require.NoError(t, err)
 
-	base := doc.Paths.Find("/subscribe").Post.RequestBody.Value.Content["application/json"].Examples["bar"].Value
+	base := doc.Paths.Find("/subscribe").Post.RequestBody.Value.Content.Value("application/json").Examples.Value("bar").Value
 	require.NotNil(t, base.Origin)
 	require.Equal(t,
 		&openapi3.Location{
@@ -451,7 +451,7 @@ func TestOrigin_XML(t *testing.T) {
 	doc, err := loader.LoadFromFile("testdata/origin/xml.yaml")
 	require.NoError(t, err)
 
-	base := doc.Paths.Find("/subscribe").Post.RequestBody.Value.Content["application/json"].Schema.Value.Properties["name"].Value.XML
+	base := doc.Paths.Find("/subscribe").Post.RequestBody.Value.Content.Value("application/json").Schema.Value.Properties.Value("name").Value.XML
 	require.NotNil(t, base.Origin)
 	require.Equal(t,
 		&openapi3.Location{
@@ -502,10 +502,10 @@ func TestOrigin_AnyFieldsStripped(t *testing.T) {
 	require.NotContains(t, paramEx, originKey, "Parameter.Example must not contain __origin__")
 
 	// MediaType.Example
-	mediaEx := resp.Content["application/json"].Example.(map[string]any)
+	mediaEx := resp.Content.Value("application/json").Example.(map[string]any)
 	require.NotContains(t, mediaEx, originKey, "MediaType.Example must not contain __origin__")
 
-	schema := resp.Content["application/json"].Schema.Value
+	schema := resp.Content.Value("application/json").Schema.Value
 
 	// Schema.Default
 	schemaDefault := schema.Default.(map[string]any)
@@ -523,7 +523,7 @@ func TestOrigin_AnyFieldsStripped(t *testing.T) {
 	}
 
 	// Link.RequestBody
-	linkRB := resp.Links["self"].Value.RequestBody.(map[string]any)
+	linkRB := resp.Links.Value("self").Value.RequestBody.(map[string]any)
 	require.NotContains(t, linkRB, originKey, "Link.RequestBody must not contain __origin__")
 }
 
@@ -533,7 +533,7 @@ func TestOrigin_ExampleWithArrayValue(t *testing.T) {
 	doc, err := loader.LoadFromFile("testdata/origin/example_with_array.yaml")
 	require.NoError(t, err)
 
-	example := doc.Paths.Find("/subscribe").Post.RequestBody.Value.Content["application/json"].Examples["bar"]
+	example := doc.Paths.Find("/subscribe").Post.RequestBody.Value.Content.Value("application/json").Examples.Value("bar")
 	require.NotNil(t, example.Value)
 
 	// The example value contains a list of objects; __origin__ must be stripped from each.
@@ -568,7 +568,7 @@ components:
 	doc, err := loader.LoadFromData([]byte(data))
 	require.NoError(t, err)
 
-	schema := doc.Components.Schemas["Foo"].Value
+	schema := doc.Components.Schemas.Value("Foo").Value
 	require.NotNil(t, schema)
 
 	constMap, ok := schema.Const.(map[string]any)
@@ -652,7 +652,7 @@ func TestOrigin_WithExternalRef(t *testing.T) {
 	doc, err := loader.LoadFromFile("testdata/origin/external.yaml")
 	require.NoError(t, err)
 
-	base := doc.Paths.Find("/subscribe").Post.RequestBody.Value.Content["application/json"].Schema.Value.Properties["name"].Value
+	base := doc.Paths.Find("/subscribe").Post.RequestBody.Value.Content.Value("application/json").Schema.Value.Properties.Value("name").Value
 	require.NotNil(t, base.XML.Origin)
 	require.Equal(t,
 		&openapi3.Location{
@@ -699,7 +699,7 @@ func TestOrigin_WithExternalRefRootOrigin(t *testing.T) {
 	require.NoError(t, err)
 
 	// base is the root schema of external-schema.yaml ($ref resolved)
-	base := doc.Paths.Find("/subscribe").Post.RequestBody.Value.Content["application/json"].Schema.Value.Properties["name"].Value
+	base := doc.Paths.Find("/subscribe").Post.RequestBody.Value.Content.Value("application/json").Schema.Value.Properties.Value("name").Value
 
 	// Root schema Origin must now be set (fixed in yaml3 document() injection)
 	require.NotNil(t, base.Origin)
@@ -748,15 +748,15 @@ func TestOrigin_NoSpuriousOriginsInComponents(t *testing.T) {
 
 	doc, err := loader.LoadFromFile("testdata/origin/components.yaml")
 
-	require.Nil(t, doc.Components.Schemas[originKey])
-	require.Nil(t, doc.Components.Parameters[originKey])
-	require.Nil(t, doc.Components.Headers[originKey])
-	require.Nil(t, doc.Components.RequestBodies[originKey])
-	require.Nil(t, doc.Components.Responses[originKey])
-	require.Nil(t, doc.Components.SecuritySchemes[originKey])
-	require.Nil(t, doc.Components.Examples[originKey])
-	require.Nil(t, doc.Components.Links[originKey])
-	require.Nil(t, doc.Components.Callbacks[originKey])
+	require.Nil(t, doc.Components.Schemas.Value(originKey))
+	require.Nil(t, doc.Components.Parameters.Value(originKey))
+	require.Nil(t, doc.Components.Headers.Value(originKey))
+	require.Nil(t, doc.Components.RequestBodies.Value(originKey))
+	require.Nil(t, doc.Components.Responses.Value(originKey))
+	require.Nil(t, doc.Components.SecuritySchemes.Value(originKey))
+	require.Nil(t, doc.Components.Examples.Value(originKey))
+	require.Nil(t, doc.Components.Links.Value(originKey))
+	require.Nil(t, doc.Components.Callbacks.Value(originKey))
 
 	require.NoError(t, err)
 }
@@ -772,7 +772,7 @@ func TestOrigin_RequiredSequence(t *testing.T) {
 	doc, err := loader.LoadFromFile("testdata/origin/required_sequence.yaml")
 	require.NoError(t, err)
 
-	schema := doc.Paths.Find("/items").Post.RequestBody.Value.Content["application/json"].Schema.Value
+	schema := doc.Paths.Find("/items").Post.RequestBody.Value.Content.Value("application/json").Schema.Value
 	require.NotNil(t, schema.Origin)
 
 	// "required" must appear in Fields (it's a sequence-valued field)
@@ -808,9 +808,9 @@ func TestOrigin_YAMLAlias(t *testing.T) {
 	doc, err := loader.LoadFromFile("testdata/origin/alias.yaml")
 	require.NoError(t, err)
 
-	anchor := doc.Components.Schemas["Base"].Value
-	alias1 := doc.Components.Schemas["Alias1"].Value
-	alias2 := doc.Components.Schemas["Alias2"].Value
+	anchor := doc.Components.Schemas.Value("Base").Value
+	alias1 := doc.Components.Schemas.Value("Alias1").Value
+	alias2 := doc.Components.Schemas.Value("Alias2").Value
 
 	// All three point to the same anchor node, so origin reflects the anchor location.
 	anchorLoc := &openapi3.Location{
@@ -845,7 +845,7 @@ func TestOrigin_Headers(t *testing.T) {
 			EndLine:   15,
 			EndColumn: 30,
 		},
-		headers["X-Rate-Limit"].Value.Origin.Key)
+		headers.Value("X-Rate-Limit").Value.Origin.Key)
 
 	require.Equal(t,
 		openapi3.Location{
@@ -854,7 +854,7 @@ func TestOrigin_Headers(t *testing.T) {
 			Column: 15,
 			Name:   "description",
 		},
-		headers["X-Rate-Limit"].Value.Origin.Fields.Get("description"))
+		headers.Value("X-Rate-Limit").Value.Origin.Fields.Get("description"))
 
 	require.Equal(t,
 		&openapi3.Location{
@@ -865,7 +865,7 @@ func TestOrigin_Headers(t *testing.T) {
 			EndLine:   19,
 			EndColumn: 29,
 		},
-		headers["X-Request-Id"].Value.Origin.Key)
+		headers.Value("X-Request-Id").Value.Origin.Key)
 }
 
 // TestOrigin_IntegerStatusCode verifies that response origin is tracked when
@@ -915,7 +915,7 @@ func TestOrigin_Disabled(t *testing.T) {
 	doc, err := loader.LoadFromFile("testdata/origin/required_sequence.yaml")
 	require.NoError(t, err)
 
-	schema := doc.Paths.Find("/items").Post.RequestBody.Value.Content["application/json"].Schema.Value
+	schema := doc.Paths.Find("/items").Post.RequestBody.Value.Content.Value("application/json").Schema.Value
 	require.Nil(t, schema.Origin)
 	require.Nil(t, doc.Info.Origin)
 	require.Nil(t, doc.Paths.Origin)
@@ -935,7 +935,7 @@ func TestOrigin_MappingFields(t *testing.T) {
 	require.NoError(t, err)
 
 	schema := doc.Paths.Find("/test").Get.Responses.Value("200").Value.
-		Content["application/json"].Schema.Value.Properties["metadata"].Value
+		Content.Value("application/json").Schema.Value.Properties.Value("metadata").Value
 	require.NotNil(t, schema.Origin)
 
 	file := "testdata/origin/mapping_fields.yaml"

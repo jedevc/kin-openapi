@@ -60,7 +60,7 @@ paths:
 	doc, err := loader.LoadFromData(spec)
 	require.NoError(t, err)
 	require.Equal(t, "An API", doc.Info.Title)
-	require.Equal(t, 2, len(doc.Components.Schemas))
+	require.Equal(t, 2, doc.Components.Schemas.Len())
 	require.Equal(t, 1, doc.Paths.Len())
 	require.Equal(t, "unexpected error", *doc.Paths.Value("/items").Put.Responses.Default().Value.Description)
 
@@ -135,7 +135,7 @@ func TestResolveSchemaRef(t *testing.T) {
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
 
-	refAVisited := doc.Components.Schemas["A"].Value.AllOf[0]
+	refAVisited := doc.Components.Schemas.Value("A").Value.AllOf[0]
 	require.Equal(t, "#/components/schemas/B", refAVisited.Ref)
 	require.NotNil(t, refAVisited.Value)
 }
@@ -169,7 +169,7 @@ paths:
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
 
-	example := doc.Paths.Value("/").Get.Responses.Status(200).Value.Content.Get("application/json").Examples["test"]
+	example := doc.Paths.Value("/").Get.Responses.Status(200).Value.Content.Get("application/json").Examples.Value("test")
 	require.NotNil(t, example.Value)
 	require.Equal(t, example.Value.Value.(map[string]any)["error"].(bool), false)
 }
@@ -260,15 +260,15 @@ components:
 			doc, err := loader.LoadFromData([]byte(strings.Replace(spec, "VERSION", test.version, 1)))
 			require.NoError(t, err)
 
-			require.Equal(t, test.wantSummary, doc.Components.Examples["Alias"].Value.Summary)
+			require.Equal(t, test.wantSummary, doc.Components.Examples.Value("Alias").Value.Summary)
 			descriptions := map[string]string{
-				"example":         doc.Components.Examples["Alias"].Value.Description,
-				"header":          doc.Components.Headers["Alias"].Value.Description,
-				"parameter":       doc.Components.Parameters["Alias"].Value.Description,
-				"request body":    doc.Components.RequestBodies["Alias"].Value.Description,
-				"response":        *doc.Components.Responses["Alias"].Value.Description,
-				"link":            doc.Components.Responses["Base"].Value.Links["Alias"].Value.Description,
-				"security scheme": doc.Components.SecuritySchemes["Alias"].Value.Description,
+				"example":         doc.Components.Examples.Value("Alias").Value.Description,
+				"header":          doc.Components.Headers.Value("Alias").Value.Description,
+				"parameter":       doc.Components.Parameters.Value("Alias").Value.Description,
+				"request body":    doc.Components.RequestBodies.Value("Alias").Value.Description,
+				"response":        *doc.Components.Responses.Value("Alias").Value.Description,
+				"link":            doc.Components.Responses.Value("Base").Value.Links.Value("Alias").Value.Description,
+				"security scheme": doc.Components.SecuritySchemes.Value("Alias").Value.Description,
 			}
 			for name, description := range descriptions {
 				t.Run(name, func(t *testing.T) {
@@ -277,22 +277,22 @@ components:
 			}
 
 			// Aliases retain the referenced value and apply metadata to it in place.
-			require.Same(t, doc.Components.Examples["Base"].Value, doc.Components.Examples["Alias"].Value)
-			require.Same(t, doc.Components.Headers["Base"].Value, doc.Components.Headers["Alias"].Value)
-			require.Same(t, doc.Components.Parameters["Base"].Value, doc.Components.Parameters["Alias"].Value)
-			require.Same(t, doc.Components.RequestBodies["Base"].Value, doc.Components.RequestBodies["Alias"].Value)
-			require.Same(t, doc.Components.Responses["Base"].Value, doc.Components.Responses["Alias"].Value)
-			require.Same(t, doc.Components.Links["Base"].Value, doc.Components.Responses["Base"].Value.Links["Alias"].Value)
-			require.Same(t, doc.Components.SecuritySchemes["Base"].Value, doc.Components.SecuritySchemes["Alias"].Value)
+			require.Same(t, doc.Components.Examples.Value("Base").Value, doc.Components.Examples.Value("Alias").Value)
+			require.Same(t, doc.Components.Headers.Value("Base").Value, doc.Components.Headers.Value("Alias").Value)
+			require.Same(t, doc.Components.Parameters.Value("Base").Value, doc.Components.Parameters.Value("Alias").Value)
+			require.Same(t, doc.Components.RequestBodies.Value("Base").Value, doc.Components.RequestBodies.Value("Alias").Value)
+			require.Same(t, doc.Components.Responses.Value("Base").Value, doc.Components.Responses.Value("Alias").Value)
+			require.Same(t, doc.Components.Links.Value("Base").Value, doc.Components.Responses.Value("Base").Value.Links.Value("Alias").Value)
+			require.Same(t, doc.Components.SecuritySchemes.Value("Base").Value, doc.Components.SecuritySchemes.Value("Alias").Value)
 
-			require.Equal(t, test.wantSummary, doc.Components.Examples["Base"].Value.Summary)
-			require.Equal(t, test.wantDescription, doc.Components.Examples["Base"].Value.Description)
-			require.Equal(t, test.wantDescription, doc.Components.Headers["Base"].Value.Description)
-			require.Equal(t, test.wantDescription, doc.Components.Parameters["Base"].Value.Description)
-			require.Equal(t, test.wantDescription, doc.Components.RequestBodies["Base"].Value.Description)
-			require.Equal(t, test.wantDescription, *doc.Components.Responses["Base"].Value.Description)
-			require.Equal(t, test.wantDescription, doc.Components.Links["Base"].Value.Description)
-			require.Equal(t, test.wantDescription, doc.Components.SecuritySchemes["Base"].Value.Description)
+			require.Equal(t, test.wantSummary, doc.Components.Examples.Value("Base").Value.Summary)
+			require.Equal(t, test.wantDescription, doc.Components.Examples.Value("Base").Value.Description)
+			require.Equal(t, test.wantDescription, doc.Components.Headers.Value("Base").Value.Description)
+			require.Equal(t, test.wantDescription, doc.Components.Parameters.Value("Base").Value.Description)
+			require.Equal(t, test.wantDescription, doc.Components.RequestBodies.Value("Base").Value.Description)
+			require.Equal(t, test.wantDescription, *doc.Components.Responses.Value("Base").Value.Description)
+			require.Equal(t, test.wantDescription, doc.Components.Links.Value("Base").Value.Description)
+			require.Equal(t, test.wantDescription, doc.Components.SecuritySchemes.Value("Base").Value.Description)
 		})
 	}
 }
@@ -387,7 +387,7 @@ paths:
 	doc, err := loader.LoadFromData(spec)
 	require.NoError(t, err)
 
-	require.NotNil(t, doc.Paths.Value("/").Post.RequestBody.Value.Content.Get("application/json").Examples["test"])
+	require.NotNil(t, doc.Paths.Value("/").Post.RequestBody.Value.Content.Get("application/json").Examples.Value("test"))
 }
 
 func createTestServer(t *testing.T, handler http.Handler) *httptest.Server {
@@ -413,7 +413,7 @@ func TestLoadFromRemoteURL(t *testing.T) {
 	doc, err := loader.LoadFromURI(url)
 	require.NoError(t, err)
 
-	require.Equal(t, &Types{"string"}, doc.Components.Schemas["TestSchema"].Value.Type)
+	require.Equal(t, &Types{"string"}, doc.Components.Schemas.Value("TestSchema").Value.Type)
 }
 
 func TestLoadWithReferenceInReference(t *testing.T) {
@@ -424,7 +424,7 @@ func TestLoadWithReferenceInReference(t *testing.T) {
 	require.NotNil(t, doc)
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
-	require.Equal(t, &Types{"string"}, doc.Paths.Value("/api/test/ref/in/ref").Post.RequestBody.Value.Content["application/json"].Schema.Value.Properties["definition_reference"].Value.Type)
+	require.Equal(t, &Types{"string"}, doc.Paths.Value("/api/test/ref/in/ref").Post.RequestBody.Value.Content.Value("application/json").Schema.Value.Properties.Value("definition_reference").Value.Type)
 }
 
 func TestLoadWithRecursiveReferenceInLocalReferenceInParentSubdir(t *testing.T) {
@@ -435,7 +435,7 @@ func TestLoadWithRecursiveReferenceInLocalReferenceInParentSubdir(t *testing.T) 
 	require.NotNil(t, doc)
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
-	require.Equal(t, &Types{"object"}, doc.Paths.Value("/api/test/ref/in/ref").Post.RequestBody.Value.Content["application/json"].Schema.Value.Properties["definition_reference"].Value.Type)
+	require.Equal(t, &Types{"object"}, doc.Paths.Value("/api/test/ref/in/ref").Post.RequestBody.Value.Content.Value("application/json").Schema.Value.Properties.Value("definition_reference").Value.Type)
 }
 
 func TestLoadWithRecursiveReferenceInReferenceInLocalReference(t *testing.T) {
@@ -446,8 +446,8 @@ func TestLoadWithRecursiveReferenceInReferenceInLocalReference(t *testing.T) {
 	require.NotNil(t, doc)
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
-	require.Equal(t, &Types{"integer"}, doc.Paths.Value("/api/test/ref/in/ref").Post.RequestBody.Value.Content["application/json"].Schema.Value.Properties["data"].Value.Properties["definition_reference"].Value.Properties["ref_prop_part"].Value.Properties["idPart"].Value.Type)
-	require.Equal(t, "int64", doc.Paths.Value("/api/test/ref/in/ref").Post.RequestBody.Value.Content["application/json"].Schema.Value.Properties["data"].Value.Properties["definition_reference"].Value.Properties["ref_prop_part"].Value.Properties["idPart"].Value.Format)
+	require.Equal(t, &Types{"integer"}, doc.Paths.Value("/api/test/ref/in/ref").Post.RequestBody.Value.Content.Value("application/json").Schema.Value.Properties.Value("data").Value.Properties.Value("definition_reference").Value.Properties.Value("ref_prop_part").Value.Properties.Value("idPart").Value.Type)
+	require.Equal(t, "int64", doc.Paths.Value("/api/test/ref/in/ref").Post.RequestBody.Value.Content.Value("application/json").Schema.Value.Properties.Value("data").Value.Properties.Value("definition_reference").Value.Properties.Value("ref_prop_part").Value.Properties.Value("idPart").Value.Format)
 }
 
 func TestLoadWithReferenceInReferenceInProperty(t *testing.T) {
@@ -458,7 +458,7 @@ func TestLoadWithReferenceInReferenceInProperty(t *testing.T) {
 	require.NotNil(t, doc)
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
-	require.Equal(t, "Problem details", doc.Paths.Value("/api/test/ref/in/ref/in/property").Post.Responses.Value("401").Value.Content["application/json"].Schema.Value.Properties["error"].Value.Title)
+	require.Equal(t, "Problem details", doc.Paths.Value("/api/test/ref/in/ref/in/property").Post.Responses.Value("401").Value.Content.Value("application/json").Schema.Value.Properties.Value("error").Value.Title)
 }
 
 func TestLoadFileWithExternalSchemaRef(t *testing.T) {
@@ -466,7 +466,7 @@ func TestLoadFileWithExternalSchemaRef(t *testing.T) {
 	loader.IsExternalRefsAllowed = true
 	doc, err := loader.LoadFromFile("testdata/testref.openapi.json")
 	require.NoError(t, err)
-	require.NotNil(t, doc.Components.Schemas["AnotherTestSchema"].Value.Type)
+	require.NotNil(t, doc.Components.Schemas.Value("AnotherTestSchema").Value.Type)
 }
 
 func TestLoadFileWithExternalSchemaRefSingleComponent(t *testing.T) {
@@ -475,9 +475,9 @@ func TestLoadFileWithExternalSchemaRefSingleComponent(t *testing.T) {
 	doc, err := loader.LoadFromFile("testdata/testrefsinglecomponent.openapi.json")
 	require.NoError(t, err)
 
-	require.NotNil(t, doc.Components.Responses["SomeResponse"])
+	require.NotNil(t, doc.Components.Responses.Value("SomeResponse"))
 	desc := "this is a single response definition"
-	require.Equal(t, &desc, doc.Components.Responses["SomeResponse"].Value.Description)
+	require.Equal(t, &desc, doc.Components.Responses.Value("SomeResponse").Value.Description)
 }
 
 func TestLoadRequestResponseHeaderRef(t *testing.T) {
@@ -517,8 +517,8 @@ func TestLoadRequestResponseHeaderRef(t *testing.T) {
 	doc, err := loader.LoadFromData(spec)
 	require.NoError(t, err)
 
-	require.NotNil(t, doc.Paths.Value("/test").Post.Responses.Default().Value.Headers["X-TEST-HEADER"].Value.Description)
-	require.Equal(t, "testheader", doc.Paths.Value("/test").Post.Responses.Default().Value.Headers["X-TEST-HEADER"].Value.Description)
+	require.NotNil(t, doc.Paths.Value("/test").Post.Responses.Default().Value.Headers.Value("X-TEST-HEADER").Value.Description)
+	require.Equal(t, "testheader", doc.Paths.Value("/test").Post.Responses.Default().Value.Headers.Value("X-TEST-HEADER").Value.Description)
 }
 
 func TestLoadFromDataWithExternalRequestResponseHeaderRemoteRef(t *testing.T) {
@@ -557,8 +557,8 @@ func TestLoadFromDataWithExternalRequestResponseHeaderRemoteRef(t *testing.T) {
 	doc, err := loader.LoadFromDataWithPath(spec, &url.URL{Path: "testdata/testfilename.openapi.json"})
 	require.NoError(t, err)
 
-	require.NotNil(t, doc.Paths.Value("/test").Post.Responses.Default().Value.Headers["X-TEST-HEADER"].Value.Description)
-	require.Equal(t, "description", doc.Paths.Value("/test").Post.Responses.Default().Value.Headers["X-TEST-HEADER"].Value.Description)
+	require.NotNil(t, doc.Paths.Value("/test").Post.Responses.Default().Value.Headers.Value("X-TEST-HEADER").Value.Description)
+	require.Equal(t, "description", doc.Paths.Value("/test").Post.Responses.Default().Value.Headers.Value("X-TEST-HEADER").Value.Description)
 }
 
 func TestLoadYamlFile(t *testing.T) {
@@ -576,7 +576,7 @@ func TestLoadYamlFileWithExternalSchemaRef(t *testing.T) {
 	doc, err := loader.LoadFromFile("testdata/testref.openapi.yml")
 	require.NoError(t, err)
 
-	require.NotNil(t, doc.Components.Schemas["AnotherTestSchema"].Value.Type)
+	require.NotNil(t, doc.Components.Schemas.Value("AnotherTestSchema").Value.Type)
 }
 
 func TestLoadYamlFileWithExternalPathRef(t *testing.T) {
@@ -585,8 +585,8 @@ func TestLoadYamlFileWithExternalPathRef(t *testing.T) {
 	doc, err := loader.LoadFromFile("testdata/pathref.openapi.yml")
 	require.NoError(t, err)
 
-	require.NotNil(t, doc.Paths.Value("/test").Get.Responses.Value("200").Value.Content["application/json"].Schema.Value.Type)
-	require.Equal(t, &Types{"string"}, doc.Paths.Value("/test").Get.Responses.Value("200").Value.Content["application/json"].Schema.Value.Type)
+	require.NotNil(t, doc.Paths.Value("/test").Get.Responses.Value("200").Value.Content.Value("application/json").Schema.Value.Type)
+	require.Equal(t, &Types{"string"}, doc.Paths.Value("/test").Get.Responses.Value("200").Value.Content.Value("application/json").Schema.Value.Type)
 }
 
 func TestResolveResponseLinkRef(t *testing.T) {
@@ -629,7 +629,7 @@ paths:
 	require.NoError(t, err)
 
 	response := doc.Paths.Value("/users/{id}").Get.Responses.Status(200).Value
-	link := response.Links[`father`].Value
+	link := response.Links.Value(`father`).Value
 	require.NotNil(t, link)
 	require.Equal(t, "getUserById", link.OperationID)
 	require.Equal(t, "link to to the father", link.Description)
@@ -642,7 +642,7 @@ func TestLinksFromOAISpec(t *testing.T) {
 	err = doc.Validate(loader.Context)
 	require.NoError(t, err)
 	response := doc.Paths.Value("/2.0/repositories/{username}/{slug}").Get.Responses.Status(200).Value
-	link := response.Links[`repositoryPullRequests`].Value
+	link := response.Links.Value(`repositoryPullRequests`).Value
 	require.Equal(t, map[string]any{
 		"username": "$response.body#/owner/username",
 		"slug":     "$response.body#/slug",

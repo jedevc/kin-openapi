@@ -10,7 +10,7 @@ type Callback struct {
 	Extensions map[string]any `json:"-" yaml:"-"`
 	Origin     *Origin        `json:"-" yaml:"-"`
 
-	m map[string]*PathItem
+	m *OrderedMap[string, *PathItem]
 }
 
 // NewCallback builds a Callback object with path items in insertion order.

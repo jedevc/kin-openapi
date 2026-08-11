@@ -42,24 +42,14 @@ func (mediaType *MediaType) WithSchemaRef(schema *SchemaRef) *MediaType {
 }
 
 func (mediaType *MediaType) WithExample(name string, value any) *MediaType {
-	example := mediaType.Examples
-	if example == nil {
-		example = make(map[string]*ExampleRef)
-		mediaType.Examples = example
-	}
-	example[name] = &ExampleRef{
+	mediaType.Examples.Set(name, &ExampleRef{
 		Value: NewExample(value),
-	}
+	})
 	return mediaType
 }
 
 func (mediaType *MediaType) WithEncoding(name string, enc *Encoding) *MediaType {
-	encoding := mediaType.Encoding
-	if encoding == nil {
-		encoding = make(Encodings)
-		mediaType.Encoding = encoding
-	}
-	encoding[name] = enc
+	mediaType.Encoding.Set(name, enc)
 	return mediaType
 }
 
@@ -85,10 +75,10 @@ func (mediaType MediaType) MarshalYAML() (any, error) {
 	if x := mediaType.Example; x != nil {
 		m["example"] = x
 	}
-	if x := mediaType.Examples; len(x) != 0 {
+	if x := mediaType.Examples; x.Len() != 0 {
 		m["examples"] = x
 	}
-	if x := mediaType.Encoding; len(x) != 0 {
+	if x := mediaType.Encoding; x.Len() != 0 {
 		m["encoding"] = x
 	}
 	return m, nil
@@ -126,7 +116,7 @@ func (mediaType *MediaType) Validate(ctx context.Context, opts ...ValidationOpti
 			return err
 		}
 
-		if mediaType.Example != nil && mediaType.Examples != nil {
+		if mediaType.Example != nil && mediaType.Examples.Len() != 0 {
 			return newMediaTypeExampleExamplesExclusive(mediaType.Origin)
 		}
 
@@ -137,17 +127,14 @@ func (mediaType *MediaType) Validate(ctx context.Context, opts ...ValidationOpti
 				}
 			}
 
-			if examples := mediaType.Examples; examples != nil {
-				for _, k := range componentNames(examples) {
-					v := examples[k]
-					if err := v.Validate(ctx); err != nil {
-						return &MediaTypeExampleValidationError{ExampleName: k, Cause: err}
-					}
-					if err := validateExampleValue(ctx, v.Value.Value, schema.Value); err != nil {
-						return newSchemaValueError("example",
-							&MediaTypeExampleValidationError{ExampleName: k, Cause: err},
-							exampleValueOrigin(v.Value, mediaType.Origin))
-					}
+			for k, v := range mediaType.Examples.Iter() {
+				if err := v.Validate(ctx); err != nil {
+					return &MediaTypeExampleValidationError{ExampleName: k, Cause: err}
+				}
+				if err := validateExampleValue(ctx, v.Value.Value, schema.Value); err != nil {
+					return newSchemaValueError("example",
+						&MediaTypeExampleValidationError{ExampleName: k, Cause: err},
+						exampleValueOrigin(v.Value, mediaType.Origin))
 				}
 			}
 		}

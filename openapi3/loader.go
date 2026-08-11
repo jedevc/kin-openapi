@@ -263,50 +263,42 @@ func (loader *Loader) ResolveRefsIn(doc *T, location *url.URL) (err error) {
 	}
 
 	if components := doc.Components; components != nil {
-		for _, name := range componentNames(components.Headers) {
-			component := components.Headers[name]
+		for _, component := range components.Headers.Iter() {
 			if err = loader.resolveHeaderRef(doc, component, location); err != nil {
 				return
 			}
 		}
-		for _, name := range componentNames(components.Parameters) {
-			component := components.Parameters[name]
+		for _, component := range components.Parameters.Iter() {
 			if err = loader.resolveParameterRef(doc, component, location); err != nil {
 				return
 			}
 		}
-		for _, name := range componentNames(components.RequestBodies) {
-			component := components.RequestBodies[name]
+		for _, component := range components.RequestBodies.Iter() {
 			if err = loader.resolveRequestBodyRef(doc, component, location); err != nil {
 				return
 			}
 		}
-		for _, name := range componentNames(components.Responses) {
-			component := components.Responses[name]
+		for _, component := range components.Responses.Iter() {
 			if err = loader.resolveResponseRef(doc, component, location); err != nil {
 				return
 			}
 		}
-		for _, name := range componentNames(components.Schemas) {
-			component := components.Schemas[name]
+		for _, component := range components.Schemas.Iter() {
 			if err = loader.resolveSchemaRef(doc, component, location, []string{}); err != nil {
 				return
 			}
 		}
-		for _, name := range componentNames(components.SecuritySchemes) {
-			component := components.SecuritySchemes[name]
+		for _, component := range components.SecuritySchemes.Iter() {
 			if err = loader.resolveSecuritySchemeRef(doc, component, location); err != nil {
 				return
 			}
 		}
-		for _, name := range componentNames(components.Examples) {
-			component := components.Examples[name]
+		for _, component := range components.Examples.Iter() {
 			if err = loader.resolveExampleRef(doc, component, location); err != nil {
 				return
 			}
 		}
-		for _, name := range componentNames(components.Callbacks) {
-			component := components.Callbacks[name]
+		for _, component := range components.Callbacks.Iter() {
 			if err = loader.resolveCallbackRef(doc, component, location); err != nil {
 				return
 			}
@@ -325,8 +317,8 @@ func (loader *Loader) ResolveRefsIn(doc *T, location *url.URL) (err error) {
 		}
 	}
 
-	for _, name := range componentNames(doc.Webhooks) {
-		if pathItem := doc.Webhooks[name]; pathItem != nil {
+	for _, pathItem := range doc.Webhooks.Iter() {
+		if pathItem != nil {
 			if err = loader.resolvePathItemRef(doc, pathItem, location); err != nil {
 				return
 			}
@@ -481,11 +473,11 @@ func (loader *Loader) resolveComponent(doc *T, ref string, path *url.URL, resolv
 				}
 
 			case *Responses:
-				cursor = c.m // m map[string]*ResponseRef
+				cursor = c.Map()
 			case *Callback:
-				cursor = c.m // m map[string]*PathItem
+				cursor = c.Map()
 			case *Paths:
-				cursor = c.m // m map[string]*PathItem
+				cursor = c.Map()
 			}
 
 			if !attempted {
@@ -541,6 +533,19 @@ func (loader *Loader) resolveComponent(doc *T, ref string, path *url.URL, resolv
 		setPathRef(cursor)
 
 		reflect.ValueOf(resolved).Elem().Set(reflect.ValueOf(cursor).Elem())
+		return componentDoc, componentPath, nil
+
+	// Handle case where cursor is *Ref (returned by JSONLookup for items with $ref)
+	case isRefMatch(cursor, resolved):
+		setPathRef(resolved)
+		setRefFromRef(cursor.(*Ref), resolved)
+		return componentDoc, componentPath, nil
+
+	// Handle case where cursor is the Value type of a Ref wrapper
+	// For example, cursor is *Schema but resolved is *SchemaRef
+	case isRefWrapperValueMatch(cursor, resolved):
+		setPathRef(resolved)
+		setRefWrapperValue(cursor, resolved)
 		return componentDoc, componentPath, nil
 
 	case reflect.TypeOf(cursor) == reflect.TypeFor[map[string]any]():
@@ -626,7 +631,237 @@ func readableType(x any) string {
 	}
 }
 
+// isRefWrapperValueMatch checks if cursor is the Value type of the resolved Ref wrapper.
+// For example, cursor is *Schema and resolved is *SchemaRef.
+func isRefWrapperValueMatch(cursor, resolved any) bool {
+	switch resolved.(type) {
+	case *CallbackRef:
+		_, ok := cursor.(*Callback)
+		return ok
+	case *ExampleRef:
+		_, ok := cursor.(*Example)
+		return ok
+	case *HeaderRef:
+		_, ok := cursor.(*Header)
+		return ok
+	case *LinkRef:
+		_, ok := cursor.(*Link)
+		return ok
+	case *ParameterRef:
+		_, ok := cursor.(*Parameter)
+		return ok
+	case *RequestBodyRef:
+		_, ok := cursor.(*RequestBody)
+		return ok
+	case *ResponseRef:
+		_, ok := cursor.(*Response)
+		return ok
+	case *SchemaRef:
+		_, ok := cursor.(*Schema)
+		return ok
+	case *SecuritySchemeRef:
+		_, ok := cursor.(*SecurityScheme)
+		return ok
+	}
+	return false
+}
+
+// setRefWrapperValue sets the Value field of resolved (a Ref wrapper) to cursor (the Value type).
+func setRefWrapperValue(cursor, resolved any) {
+	switch r := resolved.(type) {
+	case *CallbackRef:
+		r.Value = cursor.(*Callback)
+	case *ExampleRef:
+		r.Value = cursor.(*Example)
+	case *HeaderRef:
+		r.Value = cursor.(*Header)
+	case *LinkRef:
+		r.Value = cursor.(*Link)
+	case *ParameterRef:
+		r.Value = cursor.(*Parameter)
+	case *RequestBodyRef:
+		r.Value = cursor.(*RequestBody)
+	case *ResponseRef:
+		r.Value = cursor.(*Response)
+	case *SchemaRef:
+		r.Value = cursor.(*Schema)
+	case *SecuritySchemeRef:
+		r.Value = cursor.(*SecurityScheme)
+	}
+}
+
+// isRefMatch checks if cursor is *Ref and resolved is a matching Ref wrapper type.
+func isRefMatch(cursor, resolved any) bool {
+	if _, ok := cursor.(*Ref); !ok {
+		return false
+	}
+	switch resolved.(type) {
+	case *CallbackRef, *ExampleRef, *HeaderRef, *LinkRef, *ParameterRef,
+		*RequestBodyRef, *ResponseRef, *SchemaRef, *SecuritySchemeRef:
+		return true
+	}
+	return false
+}
+
+// setRefFromRef sets the Ref field of resolved from a *Ref cursor.
+func setRefFromRef(ref *Ref, resolved any) {
+	switch r := resolved.(type) {
+	case *CallbackRef:
+		r.Ref = ref.Ref
+	case *ExampleRef:
+		r.Ref = ref.Ref
+	case *HeaderRef:
+		r.Ref = ref.Ref
+	case *LinkRef:
+		r.Ref = ref.Ref
+	case *ParameterRef:
+		r.Ref = ref.Ref
+	case *RequestBodyRef:
+		r.Ref = ref.Ref
+	case *ResponseRef:
+		r.Ref = ref.Ref
+	case *SchemaRef:
+		r.Ref = ref.Ref
+	case *SecuritySchemeRef:
+		r.Ref = ref.Ref
+	}
+}
+
 func drillIntoField(cursor any, fieldName string) (any, error) {
+	// Handle ordered map types (both pointer and value types)
+	switch c := cursor.(type) {
+	case *Schemas:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case Schemas:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case *ParametersMap:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case ParametersMap:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case *Headers:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case Headers:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case *RequestBodies:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case RequestBodies:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case *ResponseBodies:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case ResponseBodies:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case *SecuritySchemes:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case SecuritySchemes:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case *Examples:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case Examples:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case *Links:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case Links:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case *Callbacks:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case Callbacks:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case *Content:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case Content:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case *Encodings:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case Encodings:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case *ServerVariables:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case ServerVariables:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case *Webhooks:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	case Webhooks:
+		if v := c.Value(fieldName); v != nil {
+			return v, nil
+		}
+		return nil, fmt.Errorf("map key %q not found", fieldName)
+	}
+
 	switch val := reflect.Indirect(reflect.ValueOf(cursor)); val.Kind() {
 
 	case reflect.Map:
@@ -784,8 +1019,8 @@ func (loader *Loader) resolveHeaderRef(doc *T, component *HeaderRef, documentPat
 			return err
 		}
 	}
-	for _, k := range componentNames(value.Examples) {
-		if err := loader.resolveExampleRef(doc, value.Examples[k], documentPath); err != nil {
+	for _, v := range value.Examples.Iter() {
+		if err := loader.resolveExampleRef(doc, v, documentPath); err != nil {
 			return err
 		}
 	}
@@ -850,11 +1085,11 @@ func (loader *Loader) resolveParameterRef(doc *T, component *ParameterRef, docum
 		return nil
 	}
 
-	if value.Content != nil && value.Schema != nil {
+	if value.Content.Len() != 0 && value.Schema != nil {
 		return errors.New("cannot contain both schema and content in a parameter")
 	}
-	for _, name := range componentNames(value.Content) {
-		if err := loader.resolveMediaTypeRefs(doc, value.Content[name], documentPath); err != nil {
+	for _, contentType := range value.Content.Iter() {
+		if err := loader.resolveMediaTypeRefs(doc, contentType, documentPath); err != nil {
 			return err
 		}
 	}
@@ -863,8 +1098,8 @@ func (loader *Loader) resolveParameterRef(doc *T, component *ParameterRef, docum
 			return err
 		}
 	}
-	for _, k := range componentNames(value.Examples) {
-		if err := loader.resolveExampleRef(doc, value.Examples[k], documentPath); err != nil {
+	for _, v := range value.Examples.Iter() {
+		if err := loader.resolveExampleRef(doc, v, documentPath); err != nil {
 			return err
 		}
 	}
@@ -929,8 +1164,8 @@ func (loader *Loader) resolveRequestBodyRef(doc *T, component *RequestBodyRef, d
 		return nil
 	}
 
-	for _, name := range componentNames(value.Content) {
-		if err := loader.resolveMediaTypeRefs(doc, value.Content[name], documentPath); err != nil {
+	for _, contentType := range value.Content.Iter() {
+		if err := loader.resolveMediaTypeRefs(doc, contentType, documentPath); err != nil {
 			return err
 		}
 	}
@@ -995,19 +1230,17 @@ func (loader *Loader) resolveResponseRef(doc *T, component *ResponseRef, documen
 		return nil
 	}
 
-	for _, name := range componentNames(value.Headers) {
-		header := value.Headers[name]
+	for _, header := range value.Headers.Iter() {
 		if err := loader.resolveHeaderRef(doc, header, documentPath); err != nil {
 			return err
 		}
 	}
-	for _, name := range componentNames(value.Content) {
-		if err := loader.resolveMediaTypeRefs(doc, value.Content[name], documentPath); err != nil {
+	for _, contentType := range value.Content.Iter() {
+		if err := loader.resolveMediaTypeRefs(doc, contentType, documentPath); err != nil {
 			return err
 		}
 	}
-	for _, name := range componentNames(value.Links) {
-		link := value.Links[name]
+	for _, link := range value.Links.Iter() {
 		if err := loader.resolveLinkRef(doc, link, documentPath); err != nil {
 			return err
 		}
@@ -1029,12 +1262,11 @@ func (loader *Loader) resolveMediaTypeRefs(doc *T, mediaType *MediaType, documen
 			return
 		}
 	}
-	for _, name := range componentNames(mediaType.Examples) {
-		example := mediaType.Examples[name]
+	for name, example := range mediaType.Examples.Iter() {
 		if err = loader.resolveExampleRef(doc, example, documentPath); err != nil {
 			return
 		}
-		mediaType.Examples[name] = example
+		mediaType.Examples.Set(name, example)
 	}
 	return
 }
@@ -1075,8 +1307,19 @@ func (loader *Loader) resolveSchemaRef(doc *T, component *SchemaRef, documentPat
 				}
 				return err
 			}
-			component.Value = resolved.Value
-			component.setRefPath(resolved.RefPath())
+			// If resolved.Value is still nil but resolved.Ref is set, the value will be
+			// filled in by backtrack. Register a callback to propagate it to component.
+			if resolved.Value == nil && resolved.Ref != "" {
+				resolvedRef := resolved.Ref
+				loader.backtrack[resolvedRef] = append(loader.backtrack[resolvedRef], func(value any) {
+					component.Value = value.(*Schema)
+					refPath, _ := loader.resolveRefPath(resolvedRef, componentPath)
+					component.setRefPath(refPath)
+				})
+			} else {
+				component.Value = resolved.Value
+				component.setRefPath(resolved.RefPath())
+			}
 		}
 		defer loader.unvisitRef(ref, component.Value)
 
@@ -1103,8 +1346,7 @@ func (loader *Loader) resolveSchemaRef(doc *T, component *SchemaRef, documentPat
 			return err
 		}
 	}
-	for _, name := range componentNames(value.Properties) {
-		v := value.Properties[name]
+	for _, v := range value.Properties.Iter() {
 		if err := loader.resolveSchemaRef(doc, v, documentPath, visited); err != nil {
 			return err
 		}
@@ -1169,20 +1411,17 @@ func (loader *Loader) resolveSchemaRef(doc *T, component *SchemaRef, documentPat
 			return err
 		}
 	}
-	for _, name := range componentNames(value.PatternProperties) {
-		v := value.PatternProperties[name]
+	for _, v := range value.PatternProperties.Iter() {
 		if err := loader.resolveSchemaRef(doc, v, documentPath, visited); err != nil {
 			return err
 		}
 	}
-	for _, name := range componentNames(value.DependentSchemas) {
-		v := value.DependentSchemas[name]
+	for _, v := range value.DependentSchemas.Iter() {
 		if err := loader.resolveSchemaRef(doc, v, documentPath, visited); err != nil {
 			return err
 		}
 	}
-	for _, name := range componentNames(value.Defs) {
-		v := value.Defs[name]
+	for _, v := range value.Defs.Iter() {
 		if err := loader.resolveSchemaRef(doc, v, documentPath, visited); err != nil {
 			return err
 		}
@@ -1512,8 +1751,7 @@ func (loader *Loader) resolvePathItemRef(doc *T, pathItem *PathItem, documentPat
 				return
 			}
 		}
-		for _, name := range componentNames(operation.Callbacks) {
-			callback := operation.Callbacks[name]
+		for _, callback := range operation.Callbacks.Iter() {
 			if err = loader.resolveCallbackRef(doc, callback, documentPath); err != nil {
 				return
 			}

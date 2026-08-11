@@ -28,37 +28,43 @@ func TestLoadCircularRefFromFile(t *testing.T) {
 
 	foo := &openapi3.SchemaRef{
 		Value: &openapi3.Schema{
-			Properties: map[string]*openapi3.SchemaRef{
+			Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
 				"foo2": {
 					Ref: "other.yml#/components/schemas/Foo2", // reference to an external file
 					Value: &openapi3.Schema{
-						Properties: map[string]*openapi3.SchemaRef{
+						Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
 							"id": {
 								Value: &openapi3.Schema{Type: &openapi3.Types{"string"}}},
-						},
+						}),
 					},
 				},
-			},
+			}),
 		},
 	}
-	bar := &openapi3.SchemaRef{Value: &openapi3.Schema{Properties: make(map[string]*openapi3.SchemaRef)}}
+	barProps := openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{})
+	bar := &openapi3.SchemaRef{Value: &openapi3.Schema{Properties: barProps}}
 	// circular reference
-	bar.Value.Properties["foo"] = &openapi3.SchemaRef{Ref: "#/components/schemas/Foo", Value: foo.Value}
-	foo.Value.Properties["bar"] = &openapi3.SchemaRef{Ref: "#/components/schemas/Bar", Value: bar.Value}
+	bar.Value.Properties.Set("foo", &openapi3.SchemaRef{Ref: "#/components/schemas/Foo", Value: foo.Value})
+	foo.Value.Properties.Set("bar", &openapi3.SchemaRef{Ref: "#/components/schemas/Bar", Value: bar.Value})
 
 	bazNestedRef := &openapi3.SchemaRef{Ref: "./baz.yml#/BazNested"}
 	array := openapi3.NewArraySchema()
 	array.Items = bazNestedRef
-	bazNested := &openapi3.Schema{Properties: map[string]*openapi3.SchemaRef{
+	bazNested := &openapi3.Schema{Properties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
 		"bazArray": {
 			Value: &openapi3.Schema{
 				Items: bazNestedRef,
 			},
 		},
 		"baz": bazNestedRef,
-	}}
+	})}
 	bazNestedRef.Value = bazNested
 
+	wantSchemas := openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{
+		"Foo": foo,
+		"Bar": bar,
+		"Baz": bazNestedRef,
+	})
 	want := &openapi3.T{
 		OpenAPI: "3.0.3",
 		Info: &openapi3.Info{
@@ -66,11 +72,7 @@ func TestLoadCircularRefFromFile(t *testing.T) {
 			Version: "1.0",
 		},
 		Components: &openapi3.Components{
-			Schemas: openapi3.Schemas{
-				"Foo": foo,
-				"Bar": bar,
-				"Baz": bazNestedRef,
-			},
+			Schemas: &wantSchemas,
 		},
 	}
 

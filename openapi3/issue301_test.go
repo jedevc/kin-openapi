@@ -20,17 +20,17 @@ func TestIssue301(t *testing.T) {
 
 	require.Equal(t, &openapi3.Types{"object"}, doc.
 		Paths.Value("/trans").
-		Post.Callbacks["transactionCallback"].Value.
+		Post.Callbacks.Value("transactionCallback").Value.
 		Value("http://notificationServer.com?transactionId={$request.body#/id}&email={$request.body#/email}").
 		Post.RequestBody.Value.
-		Content["application/json"].Schema.Value.
+		Content.Value("application/json").Schema.Value.
 		Type)
 
 	require.Equal(t, &openapi3.Types{"boolean"}, doc.
 		Paths.Value("/other").
-		Post.Callbacks["myEvent"].Value.
+		Post.Callbacks.Value("myEvent").Value.
 		Value("{$request.query.queryUrl}").
 		Post.RequestBody.Value.
-		Content["application/json"].Schema.Value.
+		Content.Value("application/json").Schema.Value.
 		Type)
 }

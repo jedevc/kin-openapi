@@ -67,11 +67,7 @@ func (requestBody *RequestBody) WithFormDataSchema(value *Schema) *RequestBody {
 }
 
 func (requestBody *RequestBody) GetMediaType(mediaType string) *MediaType {
-	m := requestBody.Content
-	if m == nil {
-		return nil
-	}
-	return m[mediaType]
+	return requestBody.Content.Value(mediaType)
 }
 
 // MarshalJSON returns the JSON encoding of RequestBody.
@@ -121,7 +117,7 @@ func (requestBody *RequestBody) UnmarshalJSON(data []byte) error {
 func (requestBody *RequestBody) Validate(ctx context.Context, opts ...ValidationOption) error {
 	ctx = WithValidationOptions(ctx, opts...)
 
-	if requestBody.Content == nil {
+	if requestBody.Content.m == nil {
 		return newRequestBodyContentRequired(requestBody.Origin)
 	}
 

@@ -37,10 +37,8 @@ func TestSchemaValidate31SubSchemas(t *testing.T) {
 
 	t.Run("patternProperties with invalid sub-schema", func(t *testing.T) {
 		schema := &openapi3.Schema{
-			Type: &openapi3.Types{"object"},
-			PatternProperties: openapi3.Schemas{
-				"^x-": {Value: invalidSchema},
-			},
+			Type:              &openapi3.Types{"object"},
+			PatternProperties: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{"^x-": {Value: invalidSchema}}),
 		}
 		err := schema.Validate(ctx)
 		require.Error(t, err, "should detect invalid sub-schema in patternProperties")
@@ -48,10 +46,8 @@ func TestSchemaValidate31SubSchemas(t *testing.T) {
 
 	t.Run("dependentSchemas with invalid sub-schema", func(t *testing.T) {
 		schema := &openapi3.Schema{
-			Type: &openapi3.Types{"object"},
-			DependentSchemas: openapi3.Schemas{
-				"name": {Value: invalidSchema},
-			},
+			Type:             &openapi3.Types{"object"},
+			DependentSchemas: openapi3.SchemasFromMap(map[string]*openapi3.SchemaRef{"name": {Value: invalidSchema}}),
 		}
 		err := schema.Validate(ctx)
 		require.Error(t, err, "should detect invalid sub-schema in dependentSchemas")

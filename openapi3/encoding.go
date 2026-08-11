@@ -23,9 +23,6 @@ func NewEncoding() *Encoding {
 	return &Encoding{}
 }
 
-// Encodings is a map of encoding objects keyed by field name.
-type Encodings map[string]*Encoding
-
 func (encoding *Encoding) WithHeader(name string, header *Header) *Encoding {
 	return encoding.WithHeaderRef(name, &HeaderRef{
 		Value: header,
@@ -33,12 +30,7 @@ func (encoding *Encoding) WithHeader(name string, header *Header) *Encoding {
 }
 
 func (encoding *Encoding) WithHeaderRef(name string, ref *HeaderRef) *Encoding {
-	headers := encoding.Headers
-	if headers == nil {
-		headers = make(map[string]*HeaderRef)
-		encoding.Headers = headers
-	}
-	headers[name] = ref
+	encoding.Headers.Set(name, ref)
 	return encoding
 }
 
@@ -58,7 +50,7 @@ func (encoding Encoding) MarshalYAML() (any, error) {
 	if x := encoding.ContentType; x != "" {
 		m["contentType"] = x
 	}
-	if x := encoding.Headers; len(x) != 0 {
+	if x := encoding.Headers; x.Len() != 0 {
 		m["headers"] = x
 	}
 	if x := encoding.Style; x != "" {
@@ -117,8 +109,7 @@ func (encoding *Encoding) Validate(ctx context.Context, opts ...ValidationOption
 		return nil
 	}
 
-	for _, k := range componentNames(encoding.Headers) {
-		v := encoding.Headers[k]
+	for k, v := range encoding.Headers.Iter() {
 		if err := ValidateIdentifier(k); err != nil {
 			return nil
 		}
