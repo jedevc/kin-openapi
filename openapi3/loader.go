@@ -263,43 +263,52 @@ func (loader *Loader) ResolveRefsIn(doc *T, location *url.URL) (err error) {
 	}
 
 	if components := doc.Components; components != nil {
-		for _, component := range components.Headers.Iter() {
-			if err = loader.resolveHeaderRef(doc, component, location); err != nil {
+		// Each collection below is walked in alphabetical, not document, order.
+		// resolveComponent's setPathRef sets a SchemaRef's refPath on first
+		// write only (see setRefPath), and a component reached indirectly
+		// through another component's $ref gets a different refPath than one
+		// reached through its own top-level entry. Sorting keeps which one
+		// resolves first stable and matches the order this has always been
+		// tested against; switching it to document order is a behavior
+		// change of its own, orthogonal to preserving document order
+		// elsewhere.
+		for _, name := range sortedKeys(components.Headers.Keys()) {
+			if err = loader.resolveHeaderRef(doc, components.Headers.Value(name), location); err != nil {
 				return
 			}
 		}
-		for _, component := range components.Parameters.Iter() {
-			if err = loader.resolveParameterRef(doc, component, location); err != nil {
+		for _, name := range sortedKeys(components.Parameters.Keys()) {
+			if err = loader.resolveParameterRef(doc, components.Parameters.Value(name), location); err != nil {
 				return
 			}
 		}
-		for _, component := range components.RequestBodies.Iter() {
-			if err = loader.resolveRequestBodyRef(doc, component, location); err != nil {
+		for _, name := range sortedKeys(components.RequestBodies.Keys()) {
+			if err = loader.resolveRequestBodyRef(doc, components.RequestBodies.Value(name), location); err != nil {
 				return
 			}
 		}
-		for _, component := range components.Responses.Iter() {
-			if err = loader.resolveResponseRef(doc, component, location); err != nil {
+		for _, name := range sortedKeys(components.Responses.Keys()) {
+			if err = loader.resolveResponseRef(doc, components.Responses.Value(name), location); err != nil {
 				return
 			}
 		}
-		for _, component := range components.Schemas.Iter() {
-			if err = loader.resolveSchemaRef(doc, component, location, []string{}); err != nil {
+		for _, name := range sortedKeys(components.Schemas.Keys()) {
+			if err = loader.resolveSchemaRef(doc, components.Schemas.Value(name), location, []string{}); err != nil {
 				return
 			}
 		}
-		for _, component := range components.SecuritySchemes.Iter() {
-			if err = loader.resolveSecuritySchemeRef(doc, component, location); err != nil {
+		for _, name := range sortedKeys(components.SecuritySchemes.Keys()) {
+			if err = loader.resolveSecuritySchemeRef(doc, components.SecuritySchemes.Value(name), location); err != nil {
 				return
 			}
 		}
-		for _, component := range components.Examples.Iter() {
-			if err = loader.resolveExampleRef(doc, component, location); err != nil {
+		for _, name := range sortedKeys(components.Examples.Keys()) {
+			if err = loader.resolveExampleRef(doc, components.Examples.Value(name), location); err != nil {
 				return
 			}
 		}
-		for _, component := range components.Callbacks.Iter() {
-			if err = loader.resolveCallbackRef(doc, component, location); err != nil {
+		for _, name := range sortedKeys(components.Callbacks.Keys()) {
+			if err = loader.resolveCallbackRef(doc, components.Callbacks.Value(name), location); err != nil {
 				return
 			}
 		}
@@ -599,7 +608,7 @@ func (loader *Loader) attachOriginToResolved(resolved any, componentDoc *T, frag
 			return
 		}
 	}
-	applyOrigins(resolved, tree)
+	applyOrigins(resolved, tree, true)
 }
 
 func readableType(x any) string {

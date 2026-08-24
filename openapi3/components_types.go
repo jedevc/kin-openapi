@@ -123,6 +123,14 @@ func (cm *ComponentMap[E]) Delete(key string) {
 	}
 }
 
+// Reorder rearranges existing entries to match order. See
+// OrderedMap.Reorder.
+func (cm *ComponentMap[E]) Reorder(order []string) {
+	if cm != nil && cm.m != nil {
+		cm.m.Reorder(order)
+	}
+}
+
 func (cm *ComponentMap[E]) Map() map[string]*E {
 	if cm == nil || cm.m == nil {
 		return make(map[string]*E)

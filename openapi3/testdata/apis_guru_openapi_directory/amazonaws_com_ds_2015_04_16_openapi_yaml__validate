@@ -1,1 +1,1 @@
-invalid components: schema "AliasName": error parsing regexp: invalid or unsupported Perl syntax: `(?!`
+invalid components: schema "CreateAliasResult": invalid allOf element: error parsing regexp: invalid or unsupported Perl syntax: `(?!`

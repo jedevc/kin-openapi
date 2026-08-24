@@ -413,6 +413,9 @@ func (callback *Callback) MarshalJSON() ([]byte, error)
 func (callback *Callback) MarshalYAML() (any, error)
     MarshalYAML returns the YAML encoding of Callback.
 
+func (callback *Callback) Reorder(order []string)
+    Reorder rearranges existing entries to match order. See OrderedMap.Reorder.
+
 func (callback *Callback) Set(key string, value *PathItem)
     Set adds or replaces key 'key' of 'callback' with 'value'. Note: 'callback'
     MUST be non-nil
@@ -540,6 +543,9 @@ func (cm *ComponentMap[E]) Map() map[string]*E
 func (cm ComponentMap[E]) MarshalJSON() ([]byte, error)
 
 func (cm ComponentMap[E]) MarshalYAML() (any, error)
+
+func (cm *ComponentMap[E]) Reorder(order []string)
+    Reorder rearranges existing entries to match order. See OrderedMap.Reorder.
 
 func (cm *ComponentMap[E]) Set(key string, value *E)
 
@@ -705,6 +711,9 @@ func (content Content) MarshalJSON() ([]byte, error)
 
 func (content Content) MarshalYAML() (any, error)
     MarshalYAML returns the YAML encoding of Content.
+
+func (content Content) Reorder(order []string)
+    Reorder rearranges existing entries to match order. See OrderedMap.Reorder.
 
 func (content *Content) Set(mime string, value *MediaType)
     Set adds or replaces a media type keyed by mime.
@@ -2090,6 +2099,14 @@ func (om *OrderedMap[K, V]) Map() map[K]V
 func (om *OrderedMap[K, V]) MarshalJSON() ([]byte, error)
     MarshalJSON implements json.Marshaler, preserving key order.
 
+func (om *OrderedMap[K, V]) Reorder(order []K)
+    Reorder rearranges existing entries to match order, moving each key to the
+    back in turn. Keys in order that aren't present in the map are skipped;
+    existing keys not mentioned in order keep their current relative position,
+    trailing after the ones that were placed. It does not add or remove entries.
+    Used to recover true document order after a YAML decode, whose intermediate
+    representation does not preserve map key order (see unmarshal in marsh.go).
+
 func (om *OrderedMap[K, V]) Set(key K, value V)
     Set adds or updates a key-value pair in the map.
 
@@ -2472,6 +2489,9 @@ func (paths *Paths) MarshalJSON() ([]byte, error)
 func (paths *Paths) MarshalYAML() (any, error)
     MarshalYAML returns the YAML encoding of Paths.
 
+func (paths *Paths) Reorder(order []string)
+    Reorder rearranges existing entries to match order. See OrderedMap.Reorder.
+
 func (paths *Paths) Set(key string, value *PathItem)
     Set adds or replaces key 'key' of 'paths' with 'value'. Note: 'paths' MUST
     be non-nil
@@ -2838,6 +2858,9 @@ func (responses *Responses) MarshalJSON() ([]byte, error)
 
 func (responses *Responses) MarshalYAML() (any, error)
     MarshalYAML returns the YAML encoding of Responses.
+
+func (responses *Responses) Reorder(order []string)
+    Reorder rearranges existing entries to match order. See OrderedMap.Reorder.
 
 func (responses *Responses) Set(key string, value *ResponseRef)
     Set adds or replaces key 'key' of 'responses' with 'value'. Note:

@@ -54,6 +54,13 @@ func (responses *Responses) Delete(key string) {
 	}
 }
 
+// Reorder rearranges existing entries to match order. See OrderedMap.Reorder.
+func (responses *Responses) Reorder(order []string) {
+	if responses != nil && responses.m != nil {
+		responses.m.Reorder(order)
+	}
+}
+
 // Map returns responses as a 'map'.
 // Note: iteration on Go maps is not ordered.
 func (responses *Responses) Map() map[string]*ResponseRef {
@@ -192,6 +199,13 @@ func (callback *Callback) Delete(key string) {
 	}
 }
 
+// Reorder rearranges existing entries to match order. See OrderedMap.Reorder.
+func (callback *Callback) Reorder(order []string) {
+	if callback != nil && callback.m != nil {
+		callback.m.Reorder(order)
+	}
+}
+
 // Map returns callback as a 'map'.
 // Note: iteration on Go maps is not ordered.
 func (callback *Callback) Map() map[string]*PathItem {
@@ -327,6 +341,13 @@ func (paths *Paths) Len() int {
 func (paths *Paths) Delete(key string) {
 	if paths != nil && paths.m != nil {
 		paths.m.Delete(key)
+	}
+}
+
+// Reorder rearranges existing entries to match order. See OrderedMap.Reorder.
+func (paths *Paths) Reorder(order []string) {
+	if paths != nil && paths.m != nil {
+		paths.m.Reorder(order)
 	}
 }
 

@@ -33,11 +33,22 @@ func unmarshal(data []byte, v any, includeOrigin bool, location *url.URL) (*orig
 	if location != nil {
 		file = location.String()
 	}
+	// Origin tracking is always requested here, regardless of includeOrigin:
+	// the position data it carries is also how applyOrigins restores true
+	// document order on every ordered-map-backed collection, which the YAML
+	// decode above loses along the way (see convertToJSONableObject in
+	// oasdiff/yaml, which round-trips through a plain, unordered Go map).
+	// setOrigin gates only whether Origin fields actually get set on the
+	// document, keeping that part of the contract unchanged for callers that
+	// didn't ask for it.
 	if tree, err := yaml.Unmarshal(data, v, yaml.DecodeOpts{
-		Origin:            yaml.OriginOpt{Enabled: includeOrigin, File: file},
+		Origin:            yaml.OriginOpt{Enabled: true, File: file},
 		DisableTimestamps: true,
 	}); err == nil {
-		applyOrigins(v, tree)
+		applyOrigins(v, tree, includeOrigin)
+		if !includeOrigin {
+			return nil, nil
+		}
 		return tree, nil
 	} else {
 		yamlErr = err

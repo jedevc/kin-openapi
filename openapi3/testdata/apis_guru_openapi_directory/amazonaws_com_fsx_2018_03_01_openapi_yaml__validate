@@ -1,1 +1,1 @@
-invalid components: schema "ActiveDirectoryBackupAttributes": error parsing regexp: invalid or unsupported Perl syntax: `(?=`
+invalid components: schema "CopyBackupResponse": invalid allOf element: error parsing regexp: invalid repeat count: `{1,2048}`

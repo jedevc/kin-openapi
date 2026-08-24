@@ -104,6 +104,13 @@ func (content Content) Delete(mime string) {
 	}
 }
 
+// Reorder rearranges existing entries to match order. See OrderedMap.Reorder.
+func (content Content) Reorder(order []string) {
+	if content.m != nil {
+		content.m.Reorder(order)
+	}
+}
+
 // Value returns the media type keyed by the exact mime given, or nil.
 func (content Content) Value(mime string) *MediaType {
 	if content.m == nil {

@@ -504,14 +504,28 @@ func (doc *T) InternalizeRefs(ctx context.Context, refNameResolver func(*T, Comp
 	}
 
 	if components := doc.Components; components != nil {
-		for _, schema := range components.Schemas.Iter() {
+		// Each loop below that clears a top-level component's Ref walks its
+		// names in alphabetical, not document, order. DefaultRefNameResolver
+		// dedupes an external $ref against a root component by checking
+		// whether that root component's own (not-yet-cleared) Ref still
+		// points at the same document (see ReferencesComponentInRootDocument's
+		// Case 2). Whether a given component has already been visited here —
+		// and had its Ref cleared — by the time some other component's
+		// properties reach it changes that outcome. Sorting keeps visitation
+		// order stable and matches upstream, which iterates the same way for
+		// the same reason; switching it to document order is a behavior
+		// change of its own, orthogonal to preserving document order
+		// elsewhere.
+		for _, name := range sortedKeys(components.Schemas.Keys()) {
+			schema := components.Schemas.Value(name)
 			isExternal := doc.addSchemaToSpec(schema, refNameResolver, false)
 			if schema != nil {
 				schema.Ref = "" // always dereference the top level
 				doc.derefSchema(schema.Value, refNameResolver, isExternal)
 			}
 		}
-		for _, p := range components.Parameters.Iter() {
+		for _, name := range sortedKeys(components.Parameters.Keys()) {
+			p := components.Parameters.Value(name)
 			isExternal := doc.addParameterToSpec(p, refNameResolver, false)
 			if p != nil && p.Value != nil {
 				p.Ref = "" // always dereference the top level
@@ -521,7 +535,8 @@ func (doc *T) InternalizeRefs(ctx context.Context, refNameResolver func(*T, Comp
 		if components.Headers != nil {
 			doc.derefHeaders(*components.Headers, refNameResolver, false)
 		}
-		for _, req := range components.RequestBodies.Iter() {
+		for _, name := range sortedKeys(components.RequestBodies.Keys()) {
+			req := components.RequestBodies.Value(name)
 			isExternal := doc.addRequestBodyToSpec(req, refNameResolver, false)
 			if req != nil && req.Value != nil {
 				req.Ref = "" // always dereference the top level
@@ -529,8 +544,8 @@ func (doc *T) InternalizeRefs(ctx context.Context, refNameResolver func(*T, Comp
 			}
 		}
 		doc.derefResponseBodies(components.Responses, refNameResolver, false)
-		for _, ss := range components.SecuritySchemes.Iter() {
-			doc.addSecuritySchemeToSpec(ss, refNameResolver, false)
+		for _, name := range sortedKeys(components.SecuritySchemes.Keys()) {
+			doc.addSecuritySchemeToSpec(components.SecuritySchemes.Value(name), refNameResolver, false)
 		}
 		if components.Examples != nil {
 			doc.derefExamples(*components.Examples, refNameResolver, false)
@@ -539,7 +554,8 @@ func (doc *T) InternalizeRefs(ctx context.Context, refNameResolver func(*T, Comp
 			doc.derefLinks(*components.Links, refNameResolver, false)
 		}
 
-		for _, cb := range components.Callbacks.Iter() {
+		for _, name := range sortedKeys(components.Callbacks.Keys()) {
+			cb := components.Callbacks.Value(name)
 			isExternal := doc.addCallbackToSpec(cb, refNameResolver, false)
 			if cb != nil && cb.Value != nil {
 				cb.Ref = "" // always dereference the top level

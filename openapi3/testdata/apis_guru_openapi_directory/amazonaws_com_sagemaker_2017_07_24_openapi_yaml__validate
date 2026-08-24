@@ -1,1 +1,1 @@
-invalid components: schema "Alarm": invalid allOf element: error parsing regexp: invalid or unsupported Perl syntax: `(?!`
+invalid components: schema "CreateDomainRequest": invalid allOf element: error parsing regexp: invalid repeat count: `{3,1016}`

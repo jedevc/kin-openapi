@@ -1,1 +1,1 @@
-invalid components: schema "AlfrescoConfiguration": invalid allOf element: error parsing regexp: invalid or unsupported Perl syntax: `(?!`
+invalid components: schema "BatchPutDocumentRequest": invalid allOf element: error parsing regexp: invalid repeat count: `{0,1023}`

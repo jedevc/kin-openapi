@@ -1,1 +1,1 @@
-invalid components: schema "ActiveIAMPolicyAssignment": invalid allOf element: error parsing regexp: invalid or unsupported Perl syntax: `(?=`
+invalid components: schema "CreateIAMPolicyAssignmentResponse": invalid allOf element: error parsing regexp: invalid or unsupported Perl syntax: `(?=`

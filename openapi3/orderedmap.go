@@ -27,6 +27,22 @@ func NewOrderedMapWithCapacity[K comparable, V any](cap int) *OrderedMap[K, V] {
 	return &OrderedMap[K, V]{m: orderedmap.New[K, V](orderedmap.WithCapacity[K, V](cap))}
 }
 
+// Reorder rearranges existing entries to match order, moving each key to the
+// back in turn. Keys in order that aren't present in the map are skipped;
+// existing keys not mentioned in order keep their current relative position,
+// trailing after the ones that were placed. It does not add or remove
+// entries. Used to recover true document order after a YAML decode, whose
+// intermediate representation does not preserve map key order (see
+// unmarshal in marsh.go).
+func (om *OrderedMap[K, V]) Reorder(order []K) {
+	if om == nil || om.m == nil {
+		return
+	}
+	for _, k := range order {
+		_ = om.m.MoveToBack(k)
+	}
+}
+
 // Len returns the number of entries in the map.
 func (om *OrderedMap[K, V]) Len() int {
 	if om == nil || om.m == nil {

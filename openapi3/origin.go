@@ -245,16 +245,22 @@ func recordMapKeyLocations(parentOrigin *Origin, field string, childTree *yaml.O
 	parentOrigin.Sequences[field] = locs
 }
 
-// applyOrigins walks a Go struct tree and a parallel OriginTree, setting
-// Origin fields on each struct from the extracted origin data.
-func applyOrigins(v any, tree *yaml.OriginTree) {
+// applyOrigins walks a Go struct tree and a parallel OriginTree. It always
+// restores the true document order of every ordered-map-backed collection
+// (Schemas, Content, Headers, Paths, ...) reachable from v, since the YAML
+// decode that produced tree loses key order along the way (see unmarshal in
+// marsh.go). It additionally sets each struct's Origin field from the
+// extracted origin data when setOrigin is true; callers that only want the
+// ordering fixed up (because the document's actual caller didn't ask for
+// origin tracking) pass false so the document's Origin fields stay nil.
+func applyOrigins(v any, tree *yaml.OriginTree, setOrigin bool) {
 	if tree == nil {
 		return
 	}
-	applyOriginsToValue(reflect.ValueOf(v), tree)
+	applyOriginsToValue(reflect.ValueOf(v), tree, setOrigin)
 }
 
-func applyOriginsToValue(val reflect.Value, tree *yaml.OriginTree) {
+func applyOriginsToValue(val reflect.Value, tree *yaml.OriginTree, setOrigin bool) {
 	// Keep track of the last pointer so we can pass it to struct handlers
 	// (needed for calling methods like Map() on maplike types).
 	var ptr reflect.Value
@@ -270,20 +276,20 @@ func applyOriginsToValue(val reflect.Value, tree *yaml.OriginTree) {
 
 	switch val.Kind() {
 	case reflect.Struct:
-		applyOriginsToStruct(val, ptr, tree)
+		applyOriginsToStruct(val, ptr, tree, setOrigin)
 	case reflect.Map:
-		applyOriginsToMap(val, tree)
+		applyOriginsToMap(val, tree, setOrigin)
 	case reflect.Slice:
-		applyOriginsToSlice(val, tree)
+		applyOriginsToSlice(val, tree, setOrigin)
 	}
 }
 
-func applyOriginsToStruct(val reflect.Value, ptr reflect.Value, tree *yaml.OriginTree) {
+func applyOriginsToStruct(val reflect.Value, ptr reflect.Value, tree *yaml.OriginTree, setOrigin bool) {
 	typ := val.Type()
 
 	// Set Origin field for structs whose Origin field has a "-" json tag.
 	var structOrigin *Origin
-	if tree.Origin != nil {
+	if setOrigin && tree.Origin != nil {
 		if sf, ok := typ.FieldByName("Origin"); ok && sf.Type == originPtrType {
 			tag := sf.Tag.Get("json")
 			if tag == "-" {
@@ -318,7 +324,7 @@ func applyOriginsToStruct(val reflect.Value, ptr reflect.Value, tree *yaml.Origi
 		if structOrigin != nil && isScalarValuedMapField(val.Field(i)) {
 			recordMapKeyLocations(structOrigin, tag, childTree)
 		}
-		applyOriginsToValue(val.Field(i), childTree)
+		applyOriginsToValue(val.Field(i), childTree, setOrigin)
 	}
 
 	// Handle wrapper types whose inner struct has no json tag:
@@ -332,14 +338,14 @@ func applyOriginsToStruct(val reflect.Value, ptr reflect.Value, tree *yaml.Origi
 		}
 		sf, _ := typ.FieldByName(fieldName)
 		if sf.Tag.Get("json") == "" {
-			applyOriginsToValue(vf, tree)
+			applyOriginsToValue(vf, tree, setOrigin)
 		}
 	}
 
-	// Handle "maplike" types (Paths, Responses, Callback) whose items are
-	// stored in an unexported map accessible via a Map() method.
-	// Use the original pointer (if available) since dereferenced values
-	// are not addressable.
+	// Handle "maplike" types (Schemas, Content, Paths, Responses, Callback,
+	// ...) whose items are stored in an unexported map accessible via a
+	// Map() method. Use the original pointer (if available) since
+	// dereferenced values are not addressable.
 	receiver := val
 	if ptr.IsValid() {
 		receiver = ptr
@@ -350,40 +356,78 @@ func applyOriginsToStruct(val reflect.Value, ptr reflect.Value, tree *yaml.Origi
 		if mapMethod := receiver.MethodByName("Map"); mapMethod.IsValid() {
 			results := mapMethod.Call(nil)
 			if len(results) == 1 {
-				applyOriginsToMap(results[0], tree)
+				order := applyOriginsToMap(results[0], tree, setOrigin)
+				// The YAML decode that produced tree lost this map's key
+				// order along the way (see unmarshal in marsh.go); order,
+				// recovered from each entry's own origin position, restores
+				// it in place. Always applied, independent of setOrigin.
+				if order != nil {
+					if reorderMethod := receiver.MethodByName("Reorder"); reorderMethod.IsValid() {
+						reorderMethod.Call([]reflect.Value{reflect.ValueOf(order)})
+					}
+				}
 			}
 		}
 	}
 }
 
-func applyOriginsToMap(val reflect.Value, tree *yaml.OriginTree) {
+// applyOriginsToMap recurses into a maplike type's entries and returns their
+// true document order (by entry position, ascending), for the caller to feed
+// to that maplike value's Reorder method. Returns nil when no entry carries
+// position data (e.g. tree.Fields is empty).
+func applyOriginsToMap(val reflect.Value, tree *yaml.OriginTree, setOrigin bool) []string {
 	if tree.Fields == nil {
-		return
+		return nil
 	}
+	type keyPos struct {
+		key          string
+		line, column int
+	}
+	var positions []keyPos
 	for _, key := range val.MapKeys() {
-		childTree := tree.Fields[key.String()]
+		ks := key.String()
+		childTree := tree.Fields[ks]
 		if childTree == nil {
 			continue
+		}
+		if s, ok := childTree.Origin.([]any); ok {
+			if o := originFromSeq(s); o != nil && o.Key != nil {
+				positions = append(positions, keyPos{key: ks, line: o.Key.Line, column: o.Key.Column})
+			}
 		}
 		elem := val.MapIndex(key)
 		// Map values are not addressable. For pointer-typed values we can
 		// recurse directly. For value types we must copy, apply, and set back.
 		if elem.Kind() == reflect.Pointer || elem.Kind() == reflect.Interface {
-			applyOriginsToValue(elem, childTree)
+			applyOriginsToValue(elem, childTree, setOrigin)
 		} else if elem.Kind() == reflect.Struct {
 			// Copy to a settable value
 			cp := reflect.New(elem.Type()).Elem()
 			cp.Set(elem)
-			applyOriginsToStruct(cp, reflect.Value{}, childTree)
+			applyOriginsToStruct(cp, reflect.Value{}, childTree, setOrigin)
 			val.SetMapIndex(key, cp)
 		}
 	}
+	if positions == nil {
+		return nil
+	}
+	slices.SortFunc(positions, func(a, b keyPos) int {
+		if a.line != b.line {
+			return a.line - b.line
+		}
+		return a.column - b.column
+	})
+	order := make([]string, len(positions))
+	for i, p := range positions {
+		order[i] = p.key
+	}
+	return order
 }
 
-func applyOriginsToSlice(val reflect.Value, tree *yaml.OriginTree) {
+func applyOriginsToSlice(val reflect.Value, tree *yaml.OriginTree, setOrigin bool) {
 	for i := 0; i < val.Len() && i < len(tree.Items); i++ {
 		if tree.Items[i] != nil {
-			applyOriginsToValue(val.Index(i), tree.Items[i])
+			applyOriginsToValue(val.Index(i), tree.Items[i], setOrigin)
 		}
 	}
 }

@@ -1,1 +1,1 @@
-invalid components: schema "KMSKeyId": error parsing regexp: invalid repeat count: `{0,2048}`
+invalid components: schema "StartDocumentAnalysisRequest": invalid allOf element: error parsing regexp: invalid repeat count: `{0,2048}`

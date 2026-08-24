@@ -1,1 +1,1 @@
-invalid components: schema "LedgerName": error parsing regexp: invalid or unsupported Perl syntax: `(?!`
+invalid components: schema "SendCommandRequest": invalid allOf element: error parsing regexp: invalid or unsupported Perl syntax: `(?!`

@@ -86,7 +86,7 @@ EOF
 }
 
 
-maplike_KeysValueSetLenDeleteMapIter() {
+maplike_KeysValueSetLenDeleteReorderMapIter() {
 	cat <<EOF >>"$maplike"
 // Keys returns the ${name} keys in insertion order.
 func (${name} ${type}) Keys() []string {
@@ -125,6 +125,13 @@ func (${name} ${type}) Len() int {
 func (${name} ${type}) Delete(key string) {
 	if ${name} != nil && ${name}.m != nil {
 		${name}.m.Delete(key)
+	}
+}
+
+// Reorder rearranges existing entries to match order. See OrderedMap.Reorder.
+func (${name} ${type}) Reorder(order []string) {
+	if ${name} != nil && ${name}.m != nil {
+		${name}.m.Reorder(order)
 	}
 }
 
@@ -288,7 +295,7 @@ for i in "${!types[@]}"; do
 	name=${names[$i]}
 
 	type="$type" name="$name" value_type="$value_type" maplike_NewWithCapa
-	type="$type" name="$name" value_type="$value_type" maplike_KeysValueSetLenDeleteMapIter
+	type="$type" name="$name" value_type="$value_type" maplike_KeysValueSetLenDeleteReorderMapIter
 	type="$type" name="$name"    deref_v="$deref_v"    maplike_Pointable
 	type="$type" name="$name" value_type="$value_type" maplike_UnMarsh
 	[[ $((i+1)) != "${#types[@]}" ]] && echo >>"$maplike"
